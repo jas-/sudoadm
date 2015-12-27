@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# First arg should be our configuration file path
+config=$([ "$1" != "" ] && echo "$1" || echo "../assets/config")
+
+# Second arg should be our testing path
+cases=$([ "$2" != "" ] && echo "$2" || echo "tests/")
+
+# Get our name
+prog=$(basename $0)
+
+# Get our current working directory
+cwd=$(pwd)
+
+# Set ${cwd} within our $PATH
+PATH=$PATH:${cwd}
+
+# Retrieve the configuration file so we have some data to work with
+if [ ! -f ${config} ]; then
+  echo "${prog}: Could not locate configuration data for tests, exiting"
+  exit 1
+fi
+
+source ${config}
+
+# Check for a tests directory from ${cwd}
+if [ ! -d ${cases} ]; then
+  echo "${prog}: Could not locate ${cases} directory, exiting"
+  exit 1
+fi
+
+# Get a list of permissions test cases from ${cwd}/tests
+tests=$(find ${cases} -type f -name perms-*)
+
+# Make sure ${#tests[@]} is > 0
+if [ ${#tests[@]} -gt 0 ]; then
+
+  echo ""
+  echo "Performing all tests involving the 'permissions' stanza"
+
+  # Begin iterating ${tests[@]}
+  for test in ${tests[@]}; do
+
+    # Inform the tester about the test being performed
+    echo "  -> Executing '$(basename ${test})'"
+
+    # Run the test
+    output=$(/bin/bash ${test} "${config}")
+
+    # Print out the results
+    echo "    -> ${output}"
+    echo ""
+  done
+fi
+

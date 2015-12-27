@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# Configuration directives for test harness
+
+# Get our current path
+cwd=$(pwd)
+
+# Setup our 'manage-sudoers' tool
+sudoadm="$(dirname ${cwd})/manage-sudoers"
+
+# Set the test file & sudoers.d to ${cwd}
+file=${cwd}/assets/sudoers
+directory=${cwd}/assets/sudoers.d/
+
+# A working temporary directory
+tmp_dir=/var/tmp/
+
+# Associative array of sudoer defaults
+declare -A defaults
+defaults[syslog]='auth'
+defaults[log_year]=''
+defaults[logfile]=/var/log/sudo.log
+defaults[!root_sudo]=''
+
+# Associative array of cmnd aliases
+declare -A cmnd_aliases
+cmnd_aliases[WWWCMNDS]="/usr/bin/uptime, /usr/bin/top, /usr/sbin/lsof"
+cmnd_aliases[DBCMNDS]="/usr/bin/uptime, /usr/bin/top, /usr/sbin/lsof"
+cmnd_aliases[MONCMNDS]="/usr/bin/uptime, /usr/bin/top, /usr/sbin/lsof"
+
+# Associative array of host aliases
+declare -A host_aliases
+host_aliases[WWWHOSTS]="web-host-1, web-host-2, web-host-3"
+host_aliases[DBHOSTS]="db-host-1, db-host-2, db-host-3"
+host_aliases[MONHOSTS]="mon-host-1, mon-host-2, mon-host-3"
+
+# Associative array of user aliases
+declare -A user_aliases
+user_aliases[WWWUSERS]="www-user-1, www-user-2, www-user-3"
+user_aliases[DBUSERS]="db-user-1, db-user-2, db-user-3"
+user_aliases[MONUSERS]="mon-user-1, mon-user-2, mon-user-3"
+
+# Associative array of permissions (use ${host_aliases[@]}, ${user_aliases[@]} & ${cmnd_aliases[@]})
+declare -A permissions
+permissions[WWWHOSTS]="WWWUSERS=${cmnd_aliases[WWWCMNDS]}"
+permissions[DBHOSTS]="DBUSERS=${cmnd_aliases[DBCMNDS]}"
+permissions[MONHOSTS]="MONUSERS=${cmnd_aliases[MONCMNDS]}"
+
+# Associative array of alternate files implementing the '#include sudoers.d/' functionality
+declare -A alt_sudoers
+alt_sudoers[WWW]="assets/sudoers.d/WWW.conf"
+alt_sudoers[DB]="assets/sudoers.d/DB.conf"
+alt_sudoers[MON]="assets/sudoers.d/MON.conf"

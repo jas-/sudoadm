@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Test harness for manage-sudoers functionality
+
+# Get our name
+prog=$(basename echo $0)
+
+# Get our working directory
+cwd=$(pwd)
+
+# Set ${cwd} within our $PATH
+PATH=$PATH:${cwd}
+
+# Configuration file for test data
+config=${cwd}/assets/config
+
+# Folder containing test cases
+cases=${cwd}/lib/tests
+
+# Check for presence of ${cwd}/lib
+if [ ! -d ${cwd}/lib ]; then
+  echo "${cwd}/lib folder was not found, exiting"
+  exit 1
+fi
+
+# Get list of test cases from ${cwd}/lib/
+tests=$(find ${cwd}/lib -mindepth 1 -maxdepth 1 -type f)
+
+# Make sure ${tests[@]} exist prior to iteration
+if [ ${#tests[@]} -lt 1 ]; then
+  echo "No tests were found in ${cwd}/lib, exiting"
+  exit 1
+fi
+
+# Iterate ${tests[@]} and run them
+for test in ${tests[@]}; do
+  /bin/bash ${test} "${config}" "${cases}"
+done

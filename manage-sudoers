@@ -1,0 +1,1069 @@
+#!/bin/bash
+
+###############################################
+# Defined variables                           #
+###############################################
+
+# Global vars
+prog=$(basename $0)
+sudoer=sudoers
+tmp_path=/var/tmp/
+
+# Mode of operations vars
+add=0
+remove=0
+
+# Option type & values
+user=
+host=
+command=
+default=
+permissions=
+value="${!#}" # Assign the last element in the @ARG list to ${value}
+
+# Additional options vars
+validate=0
+restore=0
+interactive=0
+newfile=0
+verbose=0
+
+# Informational & error array's
+info=()
+errors=()
+
+# Setup a path for binary tools (just in case)
+PATH=$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+
+###############################################
+# Help & usage subroutines                    #
+###############################################
+
+# Provide use examples
+examples()
+{
+  cat <<EOF
+     
+Manage user aliases:
+  - Add new user alias & members
+      ./${prog} -a -A foo "bar, baz, ping, pong"
+
+  - Remove an existing user alias
+      ./${prog} -r -A foo
+
+  - Remove an existing user alias member
+      ./${prog} -r -A foo "bar"
+
+Manage host aliases:
+  - Add new host alias & members
+      ./${prog} -a -H command "server01, server02, server03"
+
+  - Remove an existing host alias
+      ./${prog} -r -H host_alias
+
+  - Remove an existing host alias member
+      ./${prog} -r -H foo "bar"
+
+Manage command aliases:
+  - Add new command alias
+      ./${prog} -a -C cmd_alias "/bin/ls, /sbin/lsof, /bin/top"
+
+  - Remove an existing command alias
+      ./${prog} -r -C cmd_alias
+
+  - Remove an existing command alias member
+      ./${prog} -r -C foo "bar"
+
+Manage permissions:
+  - Add new permission
+      ./${prog} -a -P foo "ALL=/sbin/lsof, /bin/strace"
+      ./${prog} -a -P %foo "localhost=/sbin/lsof, /bin/strace"
+
+  - Remove an existing command alias
+      ./${prog} -r -P foo
+      ./${prog} -r -P %foo
+
+  - Remove an existing command alias member
+      ./${prog} -r -P foo "/bin/lsof"
+      ./${prog} -r -P %foo "/bin/lsof"
+
+Manage default options:
+  - Add new default option
+      ./${prog} -a -D default_opt "!root_sudo, timestamp_timeout"
+
+  - Remove an existing default option
+      ./${prog} -r -D default_opt
+
+  - Remove an existing default option member
+      ./${prog} -r -D foo "bar"
+
+Additional options:
+  - Specify path to sudoer configuration file to add a new user
+    alias & members
+      ./${prog} -f /etc/sudoers.d/foo.conf -a -A foo "bar, baz"
+
+  - Perform validation of change regarding new user alias member(s)
+      ./${prog} -v -a -A foo "bar, baz"
+
+  - Perform automated restoration of latest saved copy of sudoers
+    configuration
+      ./${prog} -R
+
+  - Perform interactive restoration of a prior saved copy of sudoers
+    configuration
+      ./${prog} -R -i
+
+  - Optionally create the specified sudoer configuration file if it
+    doesn't exist
+      ./${prog} -n -f /etc/sudoers.d/foo.conf -a -A foo "bar, baz"
+
+EOF
+}
+
+# Provide a usage menu
+usage()
+{
+  cat <<EOF
+  Make common changes to sudoers
+
+  Usage:
+    ./${prog} -vnVamrAHCD <Key> <Value>
+    ./${prog} -RiV
+
+  Options:
+    -h  Show this message
+    -e  Show example usage
+
+  Specify a mode:
+    -a  Addition mode
+    -r  Removal mode
+
+  Specify an option type & value:
+    -D  Defaults option
+    -H  Host alias
+    -A  User alias
+    -C  Command alias
+    -P  Permissions
+
+  Additional actions:
+    -f  Specify sudoer configuration file
+    -v  Perform validation of change
+    -R  Perform rollback of changes
+    -i  Interactive mode (Use with -R)
+    -n  Create sudoer file if it doesn't exist
+    -V  Be verbose
+
+EOF
+}
+
+###############################################
+# Ensures UID & sets arg list vars            #
+###############################################
+
+# Ensure we have permissions
+if [ $UID != 0 ]; then
+  echo "${prog}: Requires root privileges"
+  usage && exit 1
+fi
+
+# Set variables based on args
+while getopts "hef:arA:H:C:D:P:vRinV" OPTION ; do
+  case $OPTION in
+    h) usage && exit 1 ;;
+    e) examples && exit 1 ;;
+    f) sudoer=$OPTARG ;;
+    a) add=1 ;;
+    r) remove=1 ;;
+    A) user=$OPTARG ;;
+    H) host=$OPTARG ;;
+    C) command=$OPTARG ;;
+    D) default=$OPTARG ;;
+    P) permissions=$OPTARG ;;
+    v) validate=1 ;;
+    R) restore=1 ;;
+    i) interactive=1 ;;
+    n) newfile=1 ;;
+    V) verbose=1 ;;
+    ?) usage && exit 1 ;;
+  esac
+done
+
+###############################################
+# Backup management subroutines               #
+###############################################
+
+# Backup specified file
+#  1 - File to backup
+#  2 - Name
+bckup()
+{
+  local file="${1}"
+  local name=$([ "${2}" != "" ] && echo "${2}" || echo "auto")
+  local dte=$(date +%Y%m%d-%H%M%S)
+
+  # Obtain current permissions and create new empty file with same perms
+  local dir_perm=$(stat -c %a $(dirname ${file}))
+  local perm=$(stat -c %a ${file})
+  local owner=$(stat -c %u:%g ${file})
+
+  # Don't backup if ${dir_perm} < 600
+  if [ ${dir_perm} -lt 600 ]; then
+     return 0
+  fi
+
+  # Copy file or return error
+  if [ -f "${file}" ] ; then
+    suppress_output=$((cp "${file}" "${file}.${name}-${dte}") 2> /dev/null)
+  else
+    echo "${prog}: ${file} does not exist" && return 1
+  fi
+
+  # Ensure backup occured
+  if [ ! -f "${file}.${name}-${dte}" ] ; then
+    echo "${prog}: Could not create backup of ${file}" && return 1
+  fi
+
+  # Set the original permissions on the backup
+  chmod ${perm} "${file}.${name}-${dte}"
+  chown ${owner} "${file}.${name}-${dte}"
+
+  # Return Ok
+  return 0
+}
+
+# Perform backup of specified file
+#  1 - File path
+#  2 - Author initials
+backup()
+{
+  local file="${1}"
+  local author="${2}"
+
+  local info=()
+
+  info+=("${prog}: Backing up ${file},")
+
+  # Perform backup of file
+  bu=$(bckup ${file} ${author})
+
+  # Validate response
+  if [ $? != 0 ] ; then
+    info+=("${bu}")
+
+    # Expose information array & return 1 for error
+    echo "${info[@]}" && return 1
+  fi
+
+  # Expose information array & return 0 for non-errors
+  echo "${info[@]}" && return 0
+}
+
+###############################################
+# Restoration management subroutines          #
+###############################################
+
+# Find file(s)
+#  1 - File to restore
+rstore_search()
+{
+  local file=$(basename "${1}")
+  local base=$(dirname "${1}")
+
+  # If no base provided search from root (slow)
+  if [ "${base}" = "" ] ; then
+    base="/"
+  fi
+
+  # Do the search
+  local found=($(find ${base} -name "${file}.*-*"|sort))
+
+  echo "${found[@]}"
+}
+
+# Find & restore latest backup configuration file
+#  1 - File to restore
+#  2 - Program name
+rstore_interactive()
+{
+  local file="${1}"
+  local prog="${2}"
+
+  # Errors array
+  local errors=()
+
+  # Information array
+  local info=()
+
+  # Send file to our search subroutine
+  local found=$(rstore_search "${file}")
+
+  # Create prompt
+  PS3="Select file to restore: "
+
+  # Add exit item to menu
+  found+=(" Exit")
+
+  # Provide selections for user
+  select name in ${found[@]} ; do
+
+    # Handle exit & provide information
+    if [ "${name}" == "Exit" ] ; then
+      info+=("${prog} Exiting at users request")
+      echo "${info[@]}" && return 1
+    fi
+
+    info+=("${prog}: Restoring ${name}")
+
+    # Perform restoration on selected file
+    res=$(rstore_helper "${name}" "${file}")
+
+    # Handle response
+    if [ $? != 0 ] ; then
+      errors+=("${prog}: ${rst}")
+      echo "${errors[@]}" && return 1
+    fi
+
+    return 0
+  done
+}
+
+# Find & restore latest backup configuration file
+#  1 - File to restore
+rstore()
+{
+  local file="${1}"
+
+  # Send file to our search subroutine
+  local found=$(rstore_search "${file}")
+
+  # Pick the last item in array as pre-sorted last element
+  local restore="${found[${#found[@]}-1]}"
+
+  # Restore provides return code for procedure
+  rstore_helper "${restore}" "${file}"
+}
+
+# Restores specified backup file
+#  1 - Backup file
+#  2 - Original filename of backed up file
+rstore_helper()
+{
+  local bckup="${1}"
+  local orig="${2}"
+
+  # Off chance backup procedure
+  if [ -f "${orig}" ] ; then
+    bckup "${orig}" "backup"
+  fi
+
+  # Specified backup file does not exist
+  if [ ! -f "${bckup}" ] ; then
+    echo "${bckup} does not exist" && return
+  fi
+
+  # Restore the file
+  cp "${bckup}" "${orig}"
+
+  return 0
+}
+
+# Initiate restoration procedures
+#  1 - File path
+restore()
+{
+  local file="${1}"
+
+  local info=()
+
+  # Perform file restoration
+  if [ "${interactive}" == 1 ] ; then
+    rst=$(rstore_interactive "${file}")
+  else
+    rst=$(rstore "${file}")
+  fi
+
+  # Handle error response
+  if [ $? != 0 ] ; then
+    info+=("${prog}: ${rst}")
+    echo "${info[@]}" && return 1
+  fi
+
+  info+=("${prog}: Restored ${file},")
+
+  # Expose ${info[@]} array and return success
+  echo "${info[@]}" && return 0
+}
+
+###############################################
+# File management subroutines                 #
+###############################################
+
+# Find sudoer path based on os (This
+# exists to shorten the length of time
+# to find the suder configuration file)
+find_sudoer_path()
+{
+  local os=$(str_to_lower "$(uname)")
+  local path="/etc/"
+
+  if [ "${os}" == "sunos" ]; then
+    local ver=$(grep -i  "solaris" /etc/release|awk '{print $2}')
+    if [[ "${ver}" =~ ^11 ]]; then
+      path="/usr/local/etc/"
+    fi
+  fi
+
+  echo "${path}"
+}
+
+# Find actual sudoer file
+#  1 - Boolean to create file if it doesn't exist
+find_sudoer()
+{
+  local needle="${sudoer}"
+
+  if [[ "${newfile}" -eq 0 ]] && [[ ! -f "${sudoer}" ]]; then
+    info+=("INFO Searching: ${haystack}-")
+
+    local haystack=$(find_sudoer_path)
+    needle=$(find "${haystack}" -type f -name "${sudoer}")
+  fi
+
+  if [ ! -f "${sudoer}" ]; then
+    if [ "${newfile}" -eq 1 ]; then
+      create_sudoer_file "${sudoer}"
+      needle="${needle}"
+    fi
+  fi
+
+  echo "${needle}"
+}
+
+# Create specified sudoer file
+create_sudoer_file()
+{
+  if [ ! -f "${1}" ]; then
+    touch "${1}"
+    chmod 0440 "${1}"
+  fi
+}
+
+# Create a backup & temporary file
+#  1 - File
+create_temporary_files()
+{
+  # Generate a random string
+  local rand=$RANDOM
+
+  # Create some temporary file names
+  local tmp="${tmp_path}$(basename ${1}).backup.$(date +%Y%m%d).${rand}"
+  local tmp_file="${tmp_path}$(basename ${1}).$(date +%Y%m%d).${rand}"
+
+  # Create a backup (safety first)
+  create_sudoer_file "${tmp}"
+  cat "${1}" > "${tmp}"
+
+  # Create a working copy
+  create_sudoer_file "${tmp_file}"
+  cat "${1}" > "${tmp_file}"
+
+  echo "${tmp_file}"
+}
+
+# Perform string replace on file (accomodates for GNU & non-GNU versions)
+#  1 - File
+#  2 - Temp file
+#  3 - Needle (search pattern)
+#  4 - Replacment string
+do_sed()
+{
+  local file="${1}"
+  local tmp_file="${2}"
+  local needle="${3}"
+  local replacement="${4}"
+
+  # Quick fix pattern for wildcards
+  local tmp="$(echo "${needle}"|sed 's/  \+/ /g'|sed 's/\t\+/ /g')"
+  local pattern="$(echo "${tmp}"|sed 's/ \+/.*/g')"
+  #pattern="${tmp// /.*}"
+
+  info+=("INFO: Pattern: ${pattern}-")
+
+  # Replace or remove?
+  if [ "${replacement}" != "" ]; then
+    info+=("INFO: Replacmement: ${replacement}-")
+    x=$(sed "s|${pattern}|${replacement}|g" "${file}" | tee "${tmp_file}")
+  else
+    info+=("INFO: Removing: ${pattern}-")
+    x=$(sed "s|${pattern}||g" "${file}" | tee "${tmp_file}")
+  fi
+}
+
+# Perform string addition to file
+#  1 - File
+#  2 - Value
+do_add()
+{
+  local f="${1}"
+  local v="${2}"
+
+  echo "${v}" >> "${f}"
+  info+=("INFO: Added ${v}-")
+}
+
+###############################################
+# Common string handling subroutines          #
+###############################################
+
+# Converts all uppercase to lower
+#  1 - String
+str_to_lower()
+{
+  echo "${1}"|tr '[:upper:]' '[:lower:]'
+}
+
+# String replace
+#  1 - File
+#  2 - Pattern (regex)
+#  3 - Replacement string
+#  4 - Optional exclude pattern (regex)
+str_replace()
+{
+  local file="${1}"
+  local pat="${2}"
+  local str="${3}"
+  local excl="${4}"
+
+  # Haystack search using pattern
+  if [ "${excl}" != "" ]; then
+    local needle=$(grep -i "${pat}" "${file}"|grep -i -v "${excl}"|head -1)
+  else
+    local needle=$(grep -i "${pat}" "${file}"|head -1)
+  fi
+
+  # Replace or add
+  if [[ "${needle}" =~ ${pat} ]]; then
+    do_sed "${file}" "${needle}" "${str}"
+  else
+    echo "${str}" >> $file
+  fi
+}
+
+# Flatten file to string & replace
+#  1 - File
+#  2 - Pattern (regex)
+#  3 - Replacement string
+flatten_to_replace()
+{
+  local file="${1}"
+  local pat="${2}"
+  local repl="${3}"
+  local strip="${4}"
+
+  # Cleanup the file first (removes commented lines)
+  if [ "${strip}" != "" ]; then
+    do_sed "${file}" "^#"
+  fi
+
+  # Create a string from the file by replacing line endings
+  local all=$(cat "${file}"|tr '\n' ':')
+
+  # Search for pattern within original file
+  local pattern=$(cat "${file}"|grep -i "${pat}"|tr '\n' ':')
+
+  # Create an array of lines matching our supplied pattern
+  IFS=":" read -a arr <<< "${pattern}"
+
+  local str=""
+  local int=0
+
+  # Iterate our matched lines array
+  for item in "${arr[@]}" ; do
+    if [ $int -eq $((${#arr[@]}-1)) ]; then
+      str="${str}:${repl}:${item}"
+    else
+      str=$([ "${str}" != "" ] && echo "${str}:${item}" || echo "${item}")
+    fi
+    int=$((int+1))
+  done
+
+  str="${str}:"
+
+  # Convert string back to file (with line endings)
+  echo "${all}" | sed -e "s|${pattern}|${str}|g" | tr ':' '\n' > ${file}
+}
+
+# Handle user aliases
+pattern_user()
+{
+  local os=$(str_to_lower "$(uname)")
+  if [ "${os}" == "aix" ]; then
+    echo "^User_Alias.*${user}.*=.*"
+  else
+    echo "^User_Alias.*\<${user}\>.*=.*"
+  fi
+}
+
+# Handle host aliases
+pattern_host()
+{
+  local os=$(str_to_lower "$(uname)")
+  if [ "${os}" == "aix" ]; then
+    echo "^Host_Alias.*${host}.*=.*"
+  else
+    echo "^Host_Alias.*\<${host}\>.*=.*"
+  fi
+}
+
+# Handle command aliases
+pattern_command()
+{
+  local os=$(str_to_lower "$(uname)")
+  if [ "${os}" == "aix" ]; then
+    echo "^Cmnd_Alias.*${command}.*"
+  else
+    echo "^Cmnd_Alias.*\<${command}\>.*"
+  fi
+}
+
+# Handle default options
+pattern_default_opts()
+{
+  local os=$(str_to_lower "$(uname)")
+  if [ "${os}" == "aix" ]; then
+    echo "^Defaults.*${default}.*"
+  else
+    echo "^Defaults.*\<${default}\>.*"
+  fi
+}
+
+# Handle permissions
+pattern_permissions()
+{
+  local os=$(str_to_lower "$(uname)")
+  if [ "${os}" == "aix" ]; then
+    echo "^${permissions}.*"
+  else
+    echo "^\<${permissions}\>.*"
+  fi
+}
+
+###############################################
+# Subroutines that perform changes            #
+###############################################
+
+# Make additions/replacements
+make_change_add()
+{
+  local haystack="${1}"
+  local original="${2}"
+  local needle="${3}"
+  local key="${4}"
+  local value="${@:5}"
+
+  local add=0
+
+  # If ${key} is empty exit
+  if [ "${key}" == "" ]; then
+    errors+=("ERROR: No value found for $(echo "${key}"|awk '{print $1}')-")
+    return 1
+  fi
+
+  # If ${value} is empty exit
+  if [ "${value}" == "" ]; then
+    errors+=("ERROR: Cannot create empty ${key}-")
+    return 1
+  fi
+
+  # Split ${value} into an array
+  IFS=' ' read -a act <<< "${value}"
+
+  # If ${obj[@]} is empty exit
+  if [ ${#act[@]} -lt 1 ]; then
+    errors+=("ERROR: Cannot create empty ${key}-")
+    return 1
+  fi
+
+  info+=("INFO: Total additions to '${key}' #${#act[@]} (${act[@]})-")
+
+  # Create ${search} from ${needle}
+  local search=$(grep -i "${needle}" "${haystack}")
+
+  # If ${search} is empty then set it to ${needle}
+  if [ "${search}" == "" ]; then
+    search="${needle}"
+    add=1
+  fi
+
+  # Obtain the mode (User_Alias, Host_ALias etc)
+  if [ "${permissions}" == "" ]; then
+    local mode=($(echo "${key}"|awk '{print $1}'))
+  else
+    local mode="${key_orig}"
+  fi
+
+  # Obtain an array of users from ${search}
+  local usrs=($(echo "${search}"|awk -F= '{print $2}'|tr ',' ' '))
+
+  # If ${#usrs[@]} greater than 0 perform intersection from ${act[@]} & ${search} doesn't equal ${needle}
+  if [[ "${search}" != "${needle}" ]] && [[ ${#usrs[@]} -gt 0 ]]; then
+
+    # Perform intersection of ${usrs[@]} from ${act[@]}
+    local accts=($(comm <(printf '%s\n' "${usrs[@]}"|sort -u) <(printf '%s\n' "${act[@]}"|sort -u)))
+  else
+
+    # Since ${#usrs[@]} was empty use ${act[@]} as ${res}
+    local accts="$(echo ${act[@]})"
+  fi
+
+  # Set the replacement value to ${replacement}
+  if [ "${permissions}" == "" ]; then
+    replacement="${mode} ${key_orig} = $(echo "${accts[@]}"|tr ' ' ',')"
+  else
+    replacement="${mode} $(echo "${accts[@]}"|tr ' ' ',')"
+  fi
+
+  # Make the change
+  if [ ${add} -eq 0 ]; then
+    
+    # Edit existing ${mode} for ${key_orig}
+    do_sed "${original}" "${haystack}" "${search}" "${replacement}"
+  else
+    
+    # Add ${mode} ${key_orig} values
+    do_add "${haystack}" "${replacement}"
+  fi
+}
+
+# Make removals
+#  1 - Haystack (file)
+#  2 - Original (file)
+#  3 - Pattern
+#  4 - Key
+#  5 - Value
+make_change_remove()
+{
+  local haystack="${1}"
+  local original="${2}"
+  local needle="${3}"
+  local key="${4}"
+  local key_orig="${5}"
+  local value="${@:6}"
+
+  # Split ${value} into an array
+  if [ "${value}" != "" ]; then
+    IFS=' ' read -a obj <<< "${value}"
+    info+=("INFO: Total removals #${#obj[@]} (${obj[@]})-")
+  fi
+
+  # Find the specified alias
+  local search=$(grep -i "${needle}" "${haystack}")
+
+  # Nothing found in ${search} so exit
+  if [ "${search}" == "" ]; then
+    info+=("INFO: No pattern found for ${needle}-")
+    return 1
+  fi
+
+  # if ${key} present & ${value} empty erase alias
+  if [[ "${key}" != "" ]] && [[ "${key_orig}" == "${value}" ]]; then
+    do_sed "${original}" "${haystack}" "^${search}"
+  fi
+
+  # if ${key} & ${value} present remove ${value} from ${key}
+  if [[ "${key}" != "" ]] && [[ ${#obj[@]} -gt 0 ]] && [[ "${key_orig}" != "${value}" ]]; then
+
+    # Obtain the mode (User_Alias, Host_ALias etc)
+    local mode=($(echo "${search}"|awk -F= '{print $1}'))
+
+    # Obtain an array of users from ${search}
+    local usrs=($(echo "${search}"|awk -F= '{print $2}'|tr ',' ' '))
+
+    # Perform intersection of ${usrs[@]} from ${obj[@]}
+    local res=($(comm -23 <(printf '%s\n' "${usrs[@]}"|sort -u) <(printf '%s\n' "${obj[@]}"|sort -u)))
+
+    # Create the appropriate ${replacement} string
+    replacement="${mode} ${key_orig} = $(echo "${res[@]}"|tr ' ' ',')"
+
+    # Make the change
+    do_sed "${original}" "${haystack}" "${search}" "${replacement}"
+  fi
+
+  # if ${key} empty & ${value} present erase all instances of ${value}
+  if [[ "${key}" == "" ]] && [[ "${!obj[@]}" -gt 0 ]]; then
+    info+=("INFO: Iterate and remove all found instances of obj elements")
+  fi
+}
+
+# Make change according to mode
+#  1 - Needle (pattern)
+#  2 - Haystack (file)
+#  3 - Temporary file
+#  3 - Key to use
+make_change()
+{
+  local needle="${1}"
+  local haystack="${2}"
+  local tmp_file="${3}"
+  local key="${4}"
+  local key_orig="${5}"
+
+  IFS="," read -a obj <<< "${value}"
+
+  # Adding/replacing
+  if [ "${add}" -eq 1 ]; then
+    make_change_add "${tmp_file}" "${haystack}" "${needle}" "${key}" "${obj[@]}"
+  fi
+
+  if [ "${remove}" -eq 1 ]; then
+    make_change_remove "${tmp_file}" "${haystack}" "${needle}" "${key}" "${key_orig}" "${obj[@]}"
+  fi
+
+  info+=("INFO: Saved in ${tmp_file}-")
+
+  local validate=$(verify_visudo "${tmp_file}")
+  info+=("INFO: Valid syntax? ${validate}-")
+
+  if [ "${validate}" -eq 0 ]; then
+    return 0
+  else
+    errors+=("ERROR: ${tmp_file} did not pass validation-")
+    return 1
+  fi
+}
+
+###############################################
+# Input validation & output verification      #
+###############################################
+
+# Test options provided
+test_options()
+{
+  # Here we will ensure necessary args
+  # have been provided, and santitize
+  # any wildcards trying to slip in
+  # command args
+  echo "Not yet implemented"
+}
+
+# Use visudo to evaluate the temporary file prior to
+# copying back to working sudoer
+#  1 - Temporary sudoer file
+verify_visudo()
+{
+  local tmp_file="${1}"
+
+  [ -f /usr/sbin/visudo ] && visudo=/usr/sbin/visudo
+  [ -f /usr/local/sbin/visudo ] && visudo=/usr/local/sbin/visudo
+
+  # This should never happen
+  if [ "${visudo}" == "" ]; then
+    visudo=$(find / -type f -name visudo)
+  fi
+
+  # Neither should this
+  if [ ! -f "${visudo}" ]; then
+    errors+=("ERROR: visudo not installed")
+    return 1
+  fi
+
+  d=$("${visudo}" -c -q -f "${tmp_file}" 2>/dev/null)
+  echo $?
+}
+
+###############################################
+# main() output (errors & info) from robot()  #
+###############################################
+
+# Main handles subroutine & info/error handling
+#   1 - Function to call and do work on
+main()
+{
+  # Arg 1 is our function to call
+  subroutine="${1}"
+
+  # Call subroutine & handle returns
+  local info=("$(${subroutine})")
+  local ret=$?
+
+  # Be verbose if asked
+  if [ "${verbose}" == 1 ] ; then
+
+    # Header for verbose messages
+    echo "${prog}: Informational messages"
+
+    # Convert to an array
+    IFS='-' read -a iobj <<< "${info}"
+
+    # Iterate verbose messages
+    for i in "${iobj[@]}" ; do
+
+      # Strip preceeding spaces
+      item=$(echo "${i}"|xargs)
+      echo "  ${item}"
+    done
+
+    echo ""
+  fi
+
+  # Handle return
+  if [ "${ret}" != 0 ] ; then
+
+    # Header for errors
+    echo "${prog}: Errors found"
+
+    # Iterate error messages
+    for err in "${errors[@]}" ; do
+      echo "  ${err}"
+    done
+
+    exit 1
+  fi
+
+  # All checks passed
+  echo "${prog}: Ok"
+  exit 0
+}
+
+# robot
+# Considered ugly, too big due to conditionals
+# for restoration, backup, validation and work
+# while passing info() & error() array back to our
+# parent 'main()'
+robot()
+{
+  # Perform validation of args
+
+  # Was a file specified and does it exist?
+  if [[ ! -f "${sudoer}" ]] && [[ "${newfile}" -eq 1 ]]; then
+    create_sudoer_file "${sudoer}"
+    file="${sudoer}"
+  else
+    # Or find it
+    file=$(find_sudoer)
+  fi
+
+  # Make sure it is valid
+  if [ ! -f "${file}" ]; then
+    errors+=("ERROR: Could not locate file (${file})-")
+    echo "${errors[@]}" && return 1
+  fi
+
+  # Create a temporary file based on sudoer
+  local tmp_file=$(create_temporary_files "${file}")
+  info+=("INFO: Created working copy ${tmp_file}-")
+
+  # Test for presence of file
+  if [ ! -f ${file} ]; then
+    errors+=("${prog}: File specified was not found,")
+    echo "${errors[@]}" && return 1
+  fi
+
+  # Perform restoration if specified
+  if [ "${restore}" == 1 ] ; then
+
+    info+=("$(restore "${file}")")
+
+    # Check results & return if an error occured
+    if [ $? != 0 ]; then
+      echo "${info[@]}" && return 1
+    fi
+
+    # Everything passed, return 0
+    echo "${info[@]}" && return 0
+  fi
+
+  # Backup file if we are making changes
+  if [[ "${check}" == 0 ]] && [[ "${restore}" == 0 ]] ; then
+
+    info+=("$(backup "${file}" "${author}")")
+
+    # Check results & return if an error occured
+    if [ $? != 0 ]; then
+      echo "${info[@]}" && return 1
+    fi
+  fi
+
+  # Some variables
+  local needle=
+  local key=
+  local key_orig=
+  local func=
+
+  # Create work for user aliases
+  if [ "${user}" != "" ]; then
+    needle=$(pattern_user)
+    key="User_Alias ${user}"
+    key_orig="${user}"
+    info+=("INFO: Working with User_Alias context-")
+  fi
+
+  # Create work for host aliases
+  if [ "${host}" != "" ]; then
+    needle=$(pattern_host)
+    key="Host_Alias ${host}"
+    key_orig="${host}"
+    info+=("INFO: Working with Host_Alias context-")
+  fi
+
+  # Create work for command aliases
+  if [ "${command}" != "" ]; then
+    needle=$(pattern_command)
+    key="Cmnd_Alias ${command}"
+    key_orig="${command}"
+    info+=("INFO: Working with Cmnd_Alias context-")
+  fi
+
+  # Create work for default options
+  if [ "${default}" != "" ]; then
+    needle=$(pattern_default_opts)
+    key="Defaults ${default}"
+    key_orig="${default}"
+    info+=("INFO: Working with Default context-")
+  fi
+
+  # Create work for default options
+  if [ "${permissions}" != "" ]; then
+    needle=$(pattern_permissions)
+    key="${permissions}"
+    key_orig="${permissions}"
+    info+=("INFO: Working with Permissions context-")
+  fi
+
+  # Make changes if we are not just validating
+  if [ "${validate}" == 0 ]; then
+    make_change "${needle}" "${file}" "${tmp_file}" "${key}" "${key_orig}"
+  fi
+
+  # Assign return code
+  local result=$?
+
+  # Check return code & copy if valid
+  if [ "${result}" -eq 0 ]; then
+    info+=("INFO: Restoring ${file} from ${tmp_file}-")
+    cp "${tmp_file}" "${file}"
+
+    # Verify file copied, (read-only DMZ filesystems)
+    if [ $? -eq 1 ]; then
+      errors+=("ERROR: Could not restore ${file} from ${tmp_file}-")
+      echo "${errors[@]}" && return
+    fi
+  fi
+
+  # Perform validation if pattern exists in file
+
+  # Return errors
+  if [ "${#errors[@]}" != 0 ] ; then
+    echo "${errors[@]}" && return
+  fi
+
+  # Expose information array
+  echo "${info[@]}"
+
+  # Return code
+  return 0
+}
+
+# Robot, do work
+main "robot"
+

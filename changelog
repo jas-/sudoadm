@@ -1,0 +1,151 @@
+commit d0e5cb5b5858aa157f353b31700ce156ce0ea416
+Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
+Date:   Sun Dec 27 12:38:22 2015 -0700
+
+    Test harness & associated tests
+    
+    - Fix for harness vs. individual test cases with regards to relative vs. absolute paths
+    - Added the following test cases (and their status)
+      - cmnd-add: Not implemented
+      - cmnd-remove: Not implemented
+      - cmnd-remove-from: Not implemented
+      - defaults-add: Not implemented
+      - defaults-remove: Not implemented
+      - opts-alt-sudoer: Not implemented
+      - opts-alt-sudoer-create: Not implemented
+      - opts-backup: Not implemented
+      - opts-validation-cmnd: Not implemented
+      - opts-validation-cmnd-member: Not implemented
+      - opts-validation-perms: Not implemented
+      - opts-validation-user-alias: Not implemented
+      - opts-validation-user-alias-member: Not implemented
+      - perms-add: Implemented
+      - perms-remove: Implemented
+      - perms-remove-from: Implemented
+      - user-add: Implemented
+      - user-remove: Implemented
+      - user-remove-from: Implemented
+
+commit c82a8f01ec5f4d608a5a0013de6a773226e80591
+Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
+Date:   Sun Dec 20 15:35:55 2015 -0700
+
+    Test environment:
+    
+     - Added associative arrays for test harness to cover the following API functionality:
+       1. Defaults: Any default option that is allowed within the sudoers configuration file
+       2. host_aliases: Associative array of Host_Aliases and values
+       3. user_aliases: Associative array of User_Aliases and values
+       4. cmnd_aliases: Associative array of Cmnd_Aliases and values
+       5. permissions: Associative array of permissions that make use of defined Host, User & Cmnd aliases
+       6. alt_sudoers: Associatve array of alternate sudoers files making use of #include sudoer.d/ functionality
+
+commit 1f21422ed368ec7eb91701e164436039a8aaf7ae
+Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
+Date:   Sun Dec 20 15:15:52 2015 -0700
+
+    Tests:
+    
+     - Removed old directory structure for test harness
+     - Added +x to 'harness' for managing test cases
+     - Restructured test cases to implement 'assets' folder
+
+commit 9ddf3da146a27866c68faa85ee501aeac69bf502
+Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
+Date:   Sun Dec 20 15:05:12 2015 -0700
+
+    backup() & restore():
+    
+    - Replaced backup() functionality with updated code base
+    - Replaced restore() functionality with updated code base
+    - Updated usage reflected in robot() of updated code base for
+      backup() & restore() functionality
+
+commit ec1d0a20ecba27934ce63258f5063f7b3da1bb64
+Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
+Date:   Sun Dec 20 14:46:30 2015 -0700
+
+    make_change_add(): Removed
+
+commit b16296b34a96a9f915dd32a42987ec024e878842
+Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
+Date:   Thu Dec 17 16:00:38 2015 -0700
+
+    Scoping, add User_Alias:
+    
+    Added local scoping to all function variables
+    Add/Replace User_Alias functional
+
+commit 72f5b4b7013dab629dd3d579c05a6c9f8134d7e9
+Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
+Date:   Thu Dec 17 15:31:47 2015 -0700
+
+    Logging messages:
+    
+    - Removed originating function from logging messages
+
+commit 468e460d48db54ddb7ca0c57f26dfb6bd91a7763
+Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
+Date:   Wed Dec 16 17:46:00 2015 -0700
+
+    make_changes_add_*():
+    
+    - Added new functions for the following:
+      - make_change_add_defaults() - Limit changes to 'Defaults' declarations
+      - make_change_add_hosts() - Limit changes to 'Host_Aliases' declarations
+      - make_change_add_users() - Limit changes to 'User_Aliases' declarations
+      - make_change_add_permissions() - Limit changes to 'Permissions' declarations
+    
+    - Fixes:
+      - Added better informational messages for verbose mode to make_change_add()
+      - Fixed problem with Permissions vs. Modes such as User_Alias, Host_Alias etc
+
+commit dddc378432d2d85dd8d87c8a737f5ede6e1bd862
+Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
+Date:   Wed Dec 16 15:17:48 2015 -0700
+
+    usage():
+    
+    - Removed all instances of 'Remove all instances' examples as this functionality
+      will NOT be supported
+    - Added examples for making use of adding/removing permissions
+    - Added conditional regarding usage for permissions"
+
+commit 5b7bc833e1a59bd69977bb74f507f7266549508f
+Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
+Date:   Wed Dec 16 14:32:06 2015 -0700
+
+    getopts:
+    
+    - Removed -m argument
+
+commit 3c421d75e676f5cfe0edddc7cab66f97d83949a1
+Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
+Date:   Wed Dec 16 14:31:06 2015 -0700
+
+    usage():
+    
+    - Removed all instances of using modified mode examples per change type
+
+commit 63b29b9065f830bd39e77515834f6a03e76badcf
+Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
+Date:   Wed Dec 16 14:19:02 2015 -0700
+
+    make_change_remove():
+    
+    - Modification to comment regarding empty  for ALIAS specification
+
+commit 9b6e3c4c4c1651050259d26f91c54a3b84c97804
+Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
+Date:   Wed Dec 16 14:14:58 2015 -0700
+
+    make_change_remove():
+    
+    - Fix for key/value string on replacement value of removed members
+    - Fix for syntax of informational messages
+
+commit 345fb1e71f0a8b37d0e6a6a378708ff43433587c
+Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
+Date:   Tue Dec 15 17:26:16 2015 -0700
+
+    Initial commit

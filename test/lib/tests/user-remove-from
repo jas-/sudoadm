@@ -1,0 +1,83 @@
+#!/bin/bash
+
+# First arg should be our configuration file path
+config=$([ "$1" != "" ] && echo "$1" || echo "../../assets/config")
+
+# Get our name
+prog=$(basename $0)
+
+# Get our current working directory
+cwd=$(pwd)
+
+# Retrieve the configuration file so we have some data to work with
+if [ ! -f ${config} ]; then
+  echo "${prog}: Could not locate configuration data for tests, exiting"
+  exit 1
+fi
+
+source ${config}
+
+# Check for 'manage-sudoers'
+if [ ! -f "${sudoadm}" ]; then
+  sudoadm=$(find / -xdev -type f -name manage-sudoers|sort -u|head -1)
+fi
+
+# Ensure ${user_aliases[@]} is > 0
+if [ ${#user_aliases[@]} -gt 0 ]; then
+
+  # Begin iteration of ${user_aliases[@]}
+  for data in ${!user_aliases[@]}; do
+
+    # Reset ${items}, ${item} & ${random) to empty
+    items=
+    item=
+    random=
+
+    # Make a temporary copy of ${file}
+    name="${tmp_dir}$(basename ${file}).${data}.$RANDOM"
+
+    # Add an alias so we can remove it
+    bogus=$(${sudoadm} -Vnf ${name} -aA ${data} "${user_aliases[${data}]}")
+    if [ $? -ne 0 ]; then
+      echo "Failed addition of new User_Alias" && exit 1
+    fi
+
+    # Create a needle to search for
+    needle="^User_Alias.*${data}.*$(echo "${user_aliases[${data}]}"|sed -e 's|, |.*|g')"
+
+    # Use ${needle} to create ${haystack} from ${name}
+    haystack=$(grep "${needle}" ${name})
+    if [ "${haystack}" == "" ]; then
+      echo "Failed validation of new User_Alias" && exit 1
+    fi
+
+    # Sleep for .1 seconds to accomodate for race conditions
+    sleep .1
+
+    # Generate a random number for this iteration
+    random=$(shuf -i 0-$(expr ${#items[@]} - 1) -n 1)
+
+    # Generate an array from ${user_aliases[${data}]}
+    IFS=',' read -a items <<< "$(echo "${user_aliases[${data}]}")"
+
+    # Randomly pick an element from ${user_aliases[${data}]} to remove
+    item=$(echo "${items[${random}]}")
+
+    # Now remove the alias ${data}
+    bogus=$(${sudoadm} -Vf ${name} -rA ${data} "${item}")
+    if [ $? -ne 0 ]; then
+      echo "Failed removal of new User_Alias" && exit 1
+    fi
+
+    # Use ${item} to create ${haystack} from ${name}
+    haystack=$(grep "${item}" ${name})
+    if [ "${haystack}" != "" ]; then
+      echo "Failed validation of remvoval of User_Alias" && exit 1
+    fi
+
+    # Clean up our working file(s)
+    rm -f ${name}*
+  done
+fi
+
+echo "Passed"
