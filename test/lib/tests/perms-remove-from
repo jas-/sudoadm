@@ -22,6 +22,11 @@ if [ ! -f "${sudoadm}" ]; then
   sudoadm=$(find / -xdev -type f -name manage-sudoers|sort -u|head -1)
 fi
 
+# Check for 'sudoers'
+if [ ! -f "${file}" ]; then
+  file=$(find $(dirname ${config}) -xdev -type f -name sudoers|sort -u|head -1)
+fi
+
 # Ensure ${permissions[@]} is > 0
 if [ ${#permissions[@]} -gt 0 ]; then
 
@@ -35,9 +40,10 @@ if [ ${#permissions[@]} -gt 0 ]; then
 
     # Make a temporary copy of ${file}
     name="${tmp_dir}$(basename ${file}).${data}.$RANDOM"
+    cp ${file} ${name}
 
     # Add an alias so we can remove it
-    bogus=$(${sudoadm} -Vnf ${name} -aP ${data} "${permissions[${data}]}")
+    bogus=$(${sudoadm} -Vf ${name} -aP ${data} "${permissions[${data}]}")
     if [ $? -ne 0 ]; then
       echo "Failed addition of new Permissions" && exit 1
     fi
@@ -80,4 +86,4 @@ if [ ${#permissions[@]} -gt 0 ]; then
   done
 fi
 
-echo "Passed 1"
+echo "Passed"

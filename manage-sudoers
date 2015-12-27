@@ -422,21 +422,27 @@ find_sudoer()
 {
   local needle="${sudoer}"
 
-  if [[ "${newfile}" -eq 0 ]] && [[ ! -f "${sudoer}" ]]; then
-    info+=("INFO Searching: ${haystack}-")
+  # Make ${sudoer} if it doesn't exist & ${newfile} is true
+  if [[ ${newfile} -eq 1 ]] && [[ ! -f "${sudoer}" ]]; then
+    create_sudoer_file "${sudoer}"
+    echo "${sudoer}" && return 0
+  else
 
-    local haystack=$(find_sudoer_path)
-    needle=$(find "${haystack}" -type f -name "${sudoer}")
-  fi
+    # If ${sudoer} exists no need to search for it
+    if [ -f "${sudoer}" ]; then
+      echo "${sudoer}" && return 0
+    else
 
-  if [ ! -f "${sudoer}" ]; then
-    if [ "${newfile}" -eq 1 ]; then
-      create_sudoer_file "${sudoer}"
-      needle="${needle}"
+      # Search for the filename provided
+      local haystack=$(find_sudoer_path)
+      needle=$(find "${haystack}" -type f -name "$(basename ${sudoer})")
+      if [ -f ${needle} ]; then
+        echo "${needle}" && return 0
+      fi
     fi
   fi
 
-  echo "${needle}"
+  return 1
 }
 
 # Create specified sudoer file
@@ -662,10 +668,11 @@ make_change_add()
   local value="${@:5}"
 
   local add=0
+  local type=0
 
   # If ${key} is empty exit
   if [ "${key}" == "" ]; then
-    errors+=("ERROR: No value found for $(echo "${key}"|awk '{print $1}')-")
+    errors+=("ERROR: Missing argument, empty key-")
     return 1
   fi
 
@@ -675,8 +682,15 @@ make_change_add()
     return 1
   fi
 
-  # Split ${value} into an array
-  IFS=' ' read -a act <<< "${value}"
+  # Determine formatting for ${value}
+  type="$(echo "${value}"|awk '$0 !~ /,/{print 1}')"
+  if [ ${type} -eq 0 ]; then
+
+    # Split ${value} into an array
+    IFS=' ' read -a act <<< "${value}"
+  else
+    act="${value}"
+  fi
 
   # If ${obj[@]} is empty exit
   if [ ${#act[@]} -lt 1 ]; then
@@ -934,18 +948,16 @@ robot()
 {
   # Perform validation of args
 
-  # Was a file specified and does it exist?
-  if [[ ! -f "${sudoer}" ]] && [[ "${newfile}" -eq 1 ]]; then
-    create_sudoer_file "${sudoer}"
-    file="${sudoer}"
-  else
-    # Or find it
-    file=$(find_sudoer)
+  # Get or create supplied sudoer file
+  file=$(find_sudoer)
+  if [ $? -ne 0 ]; then
+    errors+=("ERROR: Could not locate or create file-")
+    echo "${errors[@]}" && return 1
   fi
 
   # Make sure it is valid
   if [ ! -f "${file}" ]; then
-    errors+=("ERROR: Could not locate file (${file})-")
+    errors+=("ERROR: Could not locate file (${file}${sudoer})-")
     echo "${errors[@]}" && return 1
   fi
 

@@ -33,11 +33,16 @@ if [ ${#permissions[@]} -gt 0 ]; then
   # Begin iteration of ${permissions[@]}
   for data in ${!permissions[@]}; do
 
+    # Reset ${items}, ${item} & ${random) to empty
+    items=
+    item=
+    random=
+
     # Make a temporary copy of ${file}
     name="${tmp_dir}$(basename ${file}).${data}.$RANDOM"
     cp ${file} ${name}
 
-    # Add a new permissions stanza so we can remove it
+    # Add an alias so we can remove it
     bogus=$(${sudoadm} -Vf ${name} -aP ${data} "${permissions[${data}]}")
     if [ $? -ne 0 ]; then
       echo "Failed addition of new Permissions" && exit 1
@@ -55,16 +60,21 @@ if [ ${#permissions[@]} -gt 0 ]; then
     # Sleep for .1 seconds to accomodate for race conditions
     sleep .1
 
-    # Now remove the Permissions ${data}
-    bogus=$(${sudoadm} -Vf ${name} -rP ${data})
+    # Randomly generate a user to add to the ${data} Permissions
+    item="/$RANDOM"
+
+    # Now add ${item} the alias ${data}
+    bogus=$(${sudoadm} -Vf ${name} -aP ${data} "${item}")
+echo "${bogus}"
     if [ $? -ne 0 ]; then
-      echo "Failed removal of new Permissions" && exit 1
+      echo "Failed to add ${item} to ${data} new Permissions" && exit 1
     fi
 
-    # Use ${needle} to create ${haystack} from ${name}
-    haystack=$(grep "${needle}" ${name})
-    if [ "${haystack}" != "" ]; then
-      echo "Failed validation of remvoval of Permissions" && exit 1
+    # Use ${item} to create ${haystack} from ${name}
+    haystack=$(grep "${item}" ${name})
+echo "${haystack}"
+    if [ "${haystack}" == "" ]; then
+      echo "Failed addition of ${item} to ${data} Permissions" && exit 1
     fi
 
     # Clean up our working file(s)

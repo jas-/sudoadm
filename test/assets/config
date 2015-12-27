@@ -40,11 +40,11 @@ user_aliases[WWWUSERS]="www-user-1, www-user-2, www-user-3"
 user_aliases[DBUSERS]="db-user-1, db-user-2, db-user-3"
 user_aliases[MONUSERS]="mon-user-1, mon-user-2, mon-user-3"
 
-# Associative array of permissions (use ${host_aliases[@]}, ${user_aliases[@]} & ${cmnd_aliases[@]})
+# Associative array of permissions
 declare -A permissions
-permissions[WWWHOSTS]="WWWUSERS=${cmnd_aliases[WWWCMNDS]}"
-permissions[DBHOSTS]="DBUSERS=${cmnd_aliases[DBCMNDS]}"
-permissions[MONHOSTS]="MONUSERS=${cmnd_aliases[MONCMNDS]}"
+permissions[WWWHOSTS]="WWWUSERS=WWWCMNDS"
+permissions[DBHOSTS]="DBUSERS=DBCMNDS"
+permissions[MONHOSTS]="MONUSERS=MONCMNDS"
 
 # Associative array of alternate files implementing the '#include sudoers.d/' functionality
 declare -A alt_sudoers

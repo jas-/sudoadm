@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# Add & verify User_Alias stanza
-
 # First arg should be our configuration file path
 config=$([ "$1" != "" ] && echo "$1" || echo "../../assets/config")
 
@@ -17,7 +15,46 @@ if [ ! -f ${config} ]; then
   exit 1
 fi
 
-# Load ${config}
 source ${config}
 
-echo "not complete"
+# Check for 'manage-sudoers'
+if [ ! -f "${sudoadm}" ]; then
+  sudoadm=$(find / -xdev -type f -name manage-sudoers|sort -u|head -1)
+fi
+
+# Check for 'sudoers'
+if [ ! -f "${file}" ]; then
+  file=$(find $(dirname ${config}) -xdev -type f -name sudoers|sort -u|head -1)
+fi
+
+# Ensure ${user_aliases[@]} is > 0
+if [ ${#cmnd_aliases[@]} -gt 0 ]; then
+
+  # Begin iteration of ${cmnd_aliases[@]}
+  for data in ${!cmnd_aliases[@]}; do
+
+    # Make a temporary copy of ${file}
+    name="${tmp_dir}$(basename ${file}).${data}.$RANDOM"
+    cp ${file} ${name}
+
+    # Suppress output but handle return code
+    bogus=$(${sudoadm} -Vf ${name} -aC ${data} "${cmnd_aliases[${data}]}")
+    if [ $? -ne 0 ]; then
+      echo "Failed addition of new Cmnd_Alias" && exit 1
+    fi
+
+    # Create a needle to search for
+    needle="^Cmnd_Alias.*${data}.*$(echo "${cmnd_aliases[${data}]}"|sed -e 's|, |.*|g')"
+
+    # Use ${needle} to create ${haystack} from ${name}
+    haystack=$(grep "${needle}" ${name})
+    if [ "${haystack}" == "" ]; then
+      echo "Failed validation of new Cmnd_Alias" && exit 1
+    fi
+
+    # Clean up our working file(s)
+    rm -f ${name}*
+  done
+fi
+
+echo "Passed"
