@@ -1,3 +1,20 @@
+commit 06dfa15633ded1ea2fdf638dfe4c82cd8e857199
+Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
+Date:   Sun Dec 27 13:48:49 2015 -0700
+
+    manage-sudoers:
+    
+      - Fix for find_sudo() function
+      - Fix for make_change_add() regarding permissions stanza
+      - Tests: Added test cases for adding, editing, removing User_Alias, Cmnd_Alias
+        & permissions stanzas
+
+commit a1794d08efc08ee6c87cf01536141f71586647fe
+Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
+Date:   Sun Dec 27 13:24:24 2015 -0700
+
+    Initial commit - corrupted branch, ref changelog
+
 commit d0e5cb5b5858aa157f353b31700ce156ce0ea416
 Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
 Date:   Sun Dec 27 12:38:22 2015 -0700
