@@ -40,7 +40,7 @@ if [ ${#permissions[@]} -gt 0 ]; then
     # Add a new permissions stanza so we can remove it
     bogus=$(${sudoadm} -Vf ${name} -aP ${data} "${permissions[${data}]}")
     if [ $? -ne 0 ]; then
-      echo "Failed addition of new Permissions" && exit 1
+      echo "Failed addition of new '${data}' Permissions" && exit 1
     fi
 
     # Create a needle to search for
@@ -49,7 +49,7 @@ if [ ${#permissions[@]} -gt 0 ]; then
     # Use ${needle} to create ${haystack} from ${name}
     haystack=$(grep "${needle}" ${name})
     if [ "${haystack}" == "" ]; then
-      echo "Failed validation of new Permissions" && exit 1
+      echo "Failed validation of new '${data}' Permissions" && exit 1
     fi
 
     # Sleep for .1 seconds to accomodate for race conditions
@@ -58,13 +58,13 @@ if [ ${#permissions[@]} -gt 0 ]; then
     # Now remove the Permissions ${data}
     bogus=$(${sudoadm} -Vf ${name} -rP ${data})
     if [ $? -ne 0 ]; then
-      echo "Failed removal of new Permissions" && exit 1
+      echo "Failed removal of '${data}' Permissions" && exit 1
     fi
 
     # Use ${needle} to create ${haystack} from ${name}
     haystack=$(grep "${needle}" ${name})
     if [ "${haystack}" != "" ]; then
-      echo "Failed validation of remvoval of Permissions" && exit 1
+      echo "Failed validation for remvoval of '${data}' Permissions" && exit 1
     fi
 
     # Clean up our working file(s)

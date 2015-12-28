@@ -42,9 +42,9 @@ user_aliases[MONUSERS]="mon-user-1, mon-user-2, mon-user-3"
 
 # Associative array of permissions
 declare -A permissions
-permissions[WWWHOSTS]="WWWUSERS=WWWCMNDS"
-permissions[DBHOSTS]="DBUSERS=DBCMNDS"
-permissions[MONHOSTS]="MONUSERS=MONCMNDS"
+permissions[WWWHOSTS]="WWWUSERS=WWWCMNDS,/sbin/who"
+permissions[DBHOSTS]="DBUSERS=DBCMNDS,/sbin/who"
+permissions[MONHOSTS]="MONUSERS=MONCMNDS,/sbin/who"
 
 # Associative array of alternate files implementing the '#include sudoers.d/' functionality
 declare -A alt_sudoers

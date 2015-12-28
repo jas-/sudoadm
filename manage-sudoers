@@ -713,6 +713,7 @@ make_change_add()
   if [ "${permissions}" == "" ]; then
     local mode=($(echo "${key}"|awk '{print $1}'))
   else
+    local perm=$(echo "${search}"|awk -F= '{print $1}'|awk '{print $2}')
     local mode="${key_orig}"
   fi
 
@@ -734,7 +735,11 @@ make_change_add()
   if [ "${permissions}" == "" ]; then
     replacement="${mode} ${key_orig} = $(echo "${accts[@]}"|tr ' ' ',')"
   else
-    replacement="${mode} $(echo "${accts[@]}"|tr ' ' ',')"
+    if [ ${add} -eq 1 ]; then
+      replacement="${mode} $(echo "${accts[@]}"|tr ' ' ',')"
+    else
+      replacement="${mode} ${perm}=$(echo "${accts[@]}"|tr ' ' ',')"
+    fi
   fi
 
   # Make the change
@@ -900,6 +905,23 @@ main()
   local info=("$(${subroutine})")
   local ret=$?
 
+  # Handle errors return
+  if [[ ${ret} -eq 1 ]] || [[ "${info[@]}" =~ ERROR ]]; then
+
+    # Header for errors
+    echo "${prog}: Errors found"
+
+    # Convert to an array
+    IFS='-' read -a iobj <<< "${info}"
+
+    # Iterate error messages
+    for err in "${iobj[@]}" ; do
+      echo "  ${err}"
+    done
+
+    exit 1
+  fi
+
   # Be verbose if asked
   if [ "${verbose}" == 1 ] ; then
 
@@ -918,20 +940,6 @@ main()
     done
 
     echo ""
-  fi
-
-  # Handle return
-  if [ "${ret}" != 0 ] ; then
-
-    # Header for errors
-    echo "${prog}: Errors found"
-
-    # Iterate error messages
-    for err in "${errors[@]}" ; do
-      echo "  ${err}"
-    done
-
-    exit 1
   fi
 
   # All checks passed
@@ -1058,15 +1066,15 @@ robot()
     # Verify file copied, (read-only DMZ filesystems)
     if [ $? -eq 1 ]; then
       errors+=("ERROR: Could not restore ${file} from ${tmp_file}-")
-      echo "${errors[@]}" && return
+      echo "${errors[@]}" && return 1
     fi
   fi
 
   # Perform validation if pattern exists in file
 
   # Return errors
-  if [ "${#errors[@]}" != 0 ] ; then
-    echo "${errors[@]}" && return
+  if [[ "${#errors[@]}" != 0 ]] || [[ ${result} -ne 0 ]]; then
+    echo "${errors[@]}" && return 1
   fi
 
   # Expose information array
