@@ -1,3 +1,36 @@
+commit 36ea91237c68a672fb371bb890c6b21f557080f1
+Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
+Date:   Mon Dec 28 12:17:34 2015 -0700
+
+    Tests & fixes
+    
+     - Fix for return values when errors present
+     - Tests:
+       - Updated return error syntax to more verbose about errors
+       - Added new test for handling additions to existing permission stanzas
+
+commit 341d1fdbcc5a8aa1f692f48bc5e57397d81ebe37
+Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
+Date:   Mon Dec 28 09:46:32 2015 -0700
+
+    v0.0.5 branch & changelog
+
+commit 06dfa15633ded1ea2fdf638dfe4c82cd8e857199
+Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
+Date:   Sun Dec 27 13:48:49 2015 -0700
+
+    manage-sudoers:
+    
+      - Fix for find_sudo() function
+      - Fix for make_change_add() regarding permissions stanza
+      - Tests: Added test cases for adding, editing, removing User_Alias, Cmnd_Alias
+        & permissions stanzas
+
+commit a1794d08efc08ee6c87cf01536141f71586647fe
+Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
+Date:   Sun Dec 27 13:24:24 2015 -0700
+
+    Initial commit - corrupted branch, ref changelog
 commit 06dfa15633ded1ea2fdf638dfe4c82cd8e857199
 Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
 Date:   Sun Dec 27 13:48:49 2015 -0700

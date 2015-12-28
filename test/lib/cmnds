@@ -1,10 +1,13 @@
 #!/bin/bash
 
-# First arg should be our configuration file path
-config=$([ "$1" != "" ] && echo "$1" || echo "../assets/config")
+# First arg should be our manage-sudoers tool
+sudoadm=$([ "$1" != "" ] && echo "$1" || echo "../../manage-sudoers")
 
-# Second arg should be our testing path
-cases=$([ "$2" != "" ] && echo "$2" || echo "tests/")
+# Second arg should be our configuration file path
+config=$([ "$2" != "" ] && echo "$2" || echo "../assets/config")
+
+# Third arg should be our testing path
+cases=$([ "$3" != "" ] && echo "$3" || echo "tests/")
 
 # Get our name
 prog=$(basename $0)
@@ -30,7 +33,7 @@ if [ ! -d ${cases} ]; then
 fi
 
 # Get a list of cmnd alias test cases from ${cwd}/tests
-tests=$(find ${cases} -type f -name cmnd-*)
+tests=$(find ${cases} -xdev -type f -name cmnd-*)
 
 # Make sure ${#tests[@]} is > 0
 if [ ${#tests[@]} -gt 0 ]; then
@@ -45,7 +48,7 @@ if [ ${#tests[@]} -gt 0 ]; then
     echo "  -> Executing '$(basename ${test})'"
 
     # Run the test
-    output=$(/bin/bash ${test} "${config}")
+    output=$(/bin/bash ${test} "${sudoadm}" "${config}")
 
     # Print out the results
     echo "    -> ${output}"

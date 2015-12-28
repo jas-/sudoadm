@@ -30,29 +30,52 @@ if [ ! -f "${file}" ]; then
   file=$(find $(dirname ${config}) -type f -name sudoers|sort -u|head -1)
 fi
 
-# Ensure ${user_aliases[@]} is > 0
-if [ ${#cmnd_aliases[@]} -gt 0 ]; then
+# Ensure ${host_aliases[@]} is > 0
+if [ ${#host_aliases[@]} -gt 0 ]; then
 
-  # Begin iteration of ${cmnd_aliases[@]}
-  for data in ${!cmnd_aliases[@]}; do
+  # Begin iteration of ${host_aliases[@]}
+  for data in ${!host_aliases[@]}; do
+
+    # Reset ${items}, ${item} & ${random) to empty
+    items=
+    item=
+    random=
 
     # Make a temporary copy of ${file}
     name="${tmp_dir}$(basename ${file}).${data}.$RANDOM"
     cp ${file} ${name}
 
-    # Suppress output but handle return code
-    bogus=$(${sudoadm} -Vf ${name} -aC ${data} "${cmnd_aliases[${data}]}")
+    # Add an alias so we can remove it
+    bogus=$(${sudoadm} -Vf ${name} -aH ${data} "${host_aliases[${data}]}")
     if [ $? -ne 0 ]; then
-      echo "Failed addition of new '${data}' Cmnd_Alias" && exit 1
+      echo "Failed addition of new '${data}' Host_Alias" && exit 1
     fi
 
     # Create a needle to search for
-    needle="^Cmnd_Alias.*${data}.*$(echo "${cmnd_aliases[${data}]}"|sed -e 's|, |.*|g')"
+    needle="^Host_Alias.*${data}.*$(echo "${host_aliases[${data}]}"|sed -e 's|, |.*|g')"
 
     # Use ${needle} to create ${haystack} from ${name}
     haystack=$(grep "${needle}" ${name})
     if [ "${haystack}" == "" ]; then
-      echo "Failed validation of new '${data}' Cmnd_Alias" && exit 1
+      echo "Failed validation of new '${data}' Host_Alias" && exit 1
+    fi
+
+    # Sleep for .1 seconds to accomodate for race conditions
+    sleep 1
+
+    # Randomly generate a user to add to the ${data} Host_Alias
+    item="$(cat /dev/urandom | tr -dc 'a-z0-9' | head -c 8)"
+
+    # Now add ${item} the alias ${data}
+    bogus=$(${sudoadm} -Vf ${name} -aH ${data} "${item}")
+    if [ $? -ne 0 ]; then
+      echo "Failed to add '${item}' to '${data}' new Host_Alias" && exit 1
+    fi
+
+    # Use ${item} to create ${haystack} from ${name}
+    haystack=$(grep "${item}" ${name})
+    if [ "${haystack}" == "" ]; then
+      echo "Failed addition of '${item}' in '${data}' Host_Alias" && exit 1
     fi
 
     # Clean up our working file(s)

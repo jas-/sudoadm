@@ -1,7 +1,10 @@
 #!/bin/bash
 
+# First arg should be our manage-sudoer tool path
+sudoadm=$([ "$1" != "" ] && echo "$1" || echo "../../../manage-sudoers")
+
 # First arg should be our configuration file path
-config=$([ "$1" != "" ] && echo "$1" || echo "../../assets/config")
+config=$([ "$2" != "" ] && echo "$2" || echo "../../assets/config")
 
 # Get our name
 prog=$(basename $0)

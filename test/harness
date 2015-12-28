@@ -11,6 +11,9 @@ cwd=$(pwd)
 # Set ${cwd} within our $PATH
 PATH=$PATH:${cwd}
 
+# Path for the manage-sudoers tool
+sudoers="$(dirname ${cwd})../manage-sudoers"
+
 # Configuration file for test data
 config=${cwd}/assets/config
 
@@ -24,7 +27,7 @@ if [ ! -d ${cwd}/lib ]; then
 fi
 
 # Get list of test cases from ${cwd}/lib/
-tests=$(find ${cwd}/lib -mindepth 1 -maxdepth 1 -type f)
+tests=$(find ${cwd}/lib/* -xdev -type f)
 
 # Make sure ${tests[@]} exist prior to iteration
 if [ ${#tests[@]} -lt 1 ]; then
@@ -32,7 +35,12 @@ if [ ${#tests[@]} -lt 1 ]; then
   exit 1
 fi
 
+# Change into ${cwd}/lib
+cd ${cwd}/lib
+
 # Iterate ${tests[@]} and run them
 for test in ${tests[@]}; do
-  /bin/bash ${test} "${config}" "${cases}"
+  if [ -f $(basename ${test}) ]; then
+    ./$(basename ${test}) "${sudoers}" "${config}" "${cases}"
+  fi
 done

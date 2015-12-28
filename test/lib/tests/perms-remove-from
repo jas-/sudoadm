@@ -1,7 +1,10 @@
 #!/bin/bash
 
+# First arg should be our manage-sudoer tool path
+sudoadm=$([ "$1" != "" ] && echo "$1" || echo "../../../manage-sudoers")
+
 # First arg should be our configuration file path
-config=$([ "$1" != "" ] && echo "$1" || echo "../../assets/config")
+config=$([ "$2" != "" ] && echo "$2" || echo "../../assets/config")
 
 # Get our name
 prog=$(basename $0)
@@ -19,12 +22,12 @@ source ${config}
 
 # Check for 'manage-sudoers'
 if [ ! -f "${sudoadm}" ]; then
-  sudoadm=$(find / -xdev -type f -name manage-sudoers|sort -u|head -1)
+  sudoadm=$(find / -type f -name manage-sudoers|sort -u|head -1)
 fi
 
 # Check for 'sudoers'
 if [ ! -f "${file}" ]; then
-  file=$(find $(dirname ${config}) -xdev -type f -name sudoers|sort -u|head -1)
+  file=$(find $(dirname ${config}) -type f -name sudoers|sort -u|head -1)
 fi
 
 # Ensure ${permissions[@]} is > 0
@@ -58,10 +61,10 @@ if [ ${#permissions[@]} -gt 0 ]; then
     fi
 
     # Sleep for .1 seconds to accomodate for race conditions
-    sleep .1
+    sleep 1
 
     # Generate a random number for this iteration
-    random=$(shuf -i 0-$(expr ${#items[@]} - 1) -n 1)
+    random=$(( $RANDOM % $(expr ${#items[@]}) ))
 
     # Generate an array from ${permissions[${data}]}
     IFS=',' read -a items <<< "$(echo "${permissions[${data}]}")"

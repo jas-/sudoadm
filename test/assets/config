@@ -5,9 +5,6 @@
 # Get our current path
 cwd=$(pwd)
 
-# Setup our 'manage-sudoers' tool
-sudoadm="$(dirname ${cwd})/manage-sudoers"
-
 # Set the test file & sudoers.d to ${cwd}
 file=${cwd}/assets/sudoers
 directory=${cwd}/assets/sudoers.d/
