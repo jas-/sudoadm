@@ -23,7 +23,7 @@ defaults[!root_sudo]=''
 declare -A cmnd_aliases
 cmnd_aliases[WWWCMNDS]="/usr/bin/uptime, /usr/bin/top, /usr/sbin/lsof"
 cmnd_aliases[DBCMNDS]="/usr/bin/uptime, /usr/bin/top, /usr/sbin/lsof"
-cmnd_aliases[MONCMNDS]="/usr/bin/uptime, /usr/bin/top, /usr/sbin/lsof"
+cmnd_aliases[MONCMNDS]="/usr/sbin/lsof, /bin/lslpp, /usr/bin/test, /bin/test, /usr/bin/ls, /bin/ls, /opt/EMLXemlxu/bin/emlxadm, /usr/sbin/fcinfo, /usr/sbin/dmidecode, /usr/sbin/hwinfo, /usr/sbin/ifconfig, /usr/sbin/ndd, /usr/ucb/ps, /usr/sbin/lputil, /usr/sbin/hbacmd, /usr/bin/pfiles, /bin/netstat, /usr/sbin/hwinfo, /usr/sbin/miitool, /sbin/ethtool, /usr/sbin/xe, /usr/sbin/esxcfg-info, /usr/sysv/bin/df, /usr/bin/df, /usr/bin/pargs, /sbin/dladm /usr/sbin/wlmstat"
 
 # Associative array of host aliases
 declare -A host_aliases
@@ -42,6 +42,8 @@ declare -A permissions
 permissions[WWWHOSTS]="WWWUSERS=WWWCMNDS,/sbin/who"
 permissions[DBHOSTS]="DBUSERS=DBCMNDS,/sbin/who"
 permissions[MONHOSTS]="MONUSERS=MONCMNDS,/sbin/who"
+permissions[%cdrom]="localhost=(ALL)NOPASSWD:/sbin/mount"
+permissions[%tape]="games=(ALL)NOPASSWD:/sbin/dd"
 
 # Associative array of alternate files implementing the '#include sudoers.d/' functionality
 declare -A alt_sudoers

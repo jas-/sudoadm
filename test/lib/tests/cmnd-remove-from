@@ -52,7 +52,7 @@ if [ ${#cmnd_aliases[@]} -gt 0 ]; then
     fi
 
     # Create a needle to search for
-    needle="^Cmnd_Alias.*${data}.*$(echo "${cmnd_aliases[${data}]}"|sed -e 's|, |.*|g')"
+    needle="^Cmnd_Alias.*${data}.*$(echo "${cmnd_aliases[${data}]}"|sed -e 's|, |.*|g'|sed -e 's| |.*|g')"
 
     # Use ${needle} to create ${haystack} from ${name}
     haystack=$(grep "${needle}" ${name})
@@ -63,14 +63,19 @@ if [ ${#cmnd_aliases[@]} -gt 0 ]; then
     # Sleep for .1 seconds to accomodate for race conditions
     sleep 1
 
-    # Generate a random number for this iteration
-    random=$(( $RANDOM % $(expr ${#items[@]}) ))
-
     # Generate an array from ${cmnd_aliases[${data}]}
     IFS=',' read -a items <<< "$(echo "${cmnd_aliases[${data}]}")"
 
-    # Randomly pick an element from ${cmnd_aliases[${data}]} to remove
-    item=$(echo "${items[${random}]}")
+    # Generate a random number for this iteration
+    while [[ ${random} == "" ]] || [[ ${random} -gt ${#items[@]} ]]; do
+      random=$(( $RANDOM % ${#items[@]} ))
+      if [[ ${random} -lt ${#items[@]} ]] && [[ ${random} -gt -1 ]]; then
+
+        # Randomly pick an element from ${user_aliases[${data}]} to remove
+        item=$(echo "${items[${random}]}")
+        break
+      fi
+    done
 
     # Now remove the alias ${data}
     bogus=$(${sudoadm} -Vf ${name} -rC ${data} "${item}")
@@ -81,7 +86,7 @@ if [ ${#cmnd_aliases[@]} -gt 0 ]; then
     # Use ${item} to create ${haystack} from ${name}
     haystack=$(grep "${item}" ${name})
     if [ "${haystack}" != "" ]; then
-      echo "Failed validation for remvoval of '${data}' Cmnd_Alias" && exit 1
+      echo "Failed validation for remvoval of '${item}' from the '${data}' Cmnd_Alias" && exit 1
     fi
 
     # Clean up our working file(s)

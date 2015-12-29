@@ -64,7 +64,7 @@ if [ ${#host_aliases[@]} -gt 0 ]; then
     sleep 1
 
     # Randomly generate a user to add to the ${data} Host_Alias
-    item="$(cat /dev/urandom | tr -dc 'a-z0-9' | head -c 8)"
+    item="$RANDOM"
 
     # Now add ${item} the alias ${data}
     bogus=$(${sudoadm} -Vf ${name} -aH ${data} "${item}")

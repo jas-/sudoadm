@@ -602,56 +602,31 @@ flatten_to_replace()
 # Handle user aliases
 pattern_user()
 {
-  local os=$(str_to_lower "$(uname)")
-  if [ "${os}" == "aix" ]; then
-    echo "^User_Alias.*${user}.*=.*"
-  else
-    echo "^User_Alias.*\<${user}\>.*=.*"
-  fi
+  echo "^User_Alias.*${user}.*=.*"
 }
 
 # Handle host aliases
 pattern_host()
 {
-  local os=$(str_to_lower "$(uname)")
-  if [ "${os}" == "aix" ]; then
-    echo "^Host_Alias.*${host}.*=.*"
-  else
-    echo "^Host_Alias.*\<${host}\>.*=.*"
-  fi
+  echo "^Host_Alias.*${host}.*=.*"
 }
 
 # Handle command aliases
 pattern_command()
 {
-  local os=$(str_to_lower "$(uname)")
-  if [ "${os}" == "aix" ]; then
-    echo "^Cmnd_Alias.*${command}.*"
-  else
-    echo "^Cmnd_Alias.*\<${command}\>.*"
-  fi
+  echo "^Cmnd_Alias.*${command}.*"
 }
 
 # Handle default options
 pattern_default_opts()
 {
-  local os=$(str_to_lower "$(uname)")
-  if [ "${os}" == "aix" ]; then
-    echo "^Defaults.*${default}.*"
-  else
-    echo "^Defaults.*\<${default}\>.*"
-  fi
+  echo "^Defaults.*${default}.*"
 }
 
 # Handle permissions
 pattern_permissions()
 {
-  local os=$(str_to_lower "$(uname)")
-  if [ "${os}" == "aix" ]; then
-    echo "^${permissions}.*"
-  else
-    echo "^\<${permissions}\>.*"
-  fi
+  echo "^${permissions}.*"
 }
 
 ###############################################
@@ -659,6 +634,7 @@ pattern_permissions()
 ###############################################
 
 # Make additions/replacements
+# sed -ne '/^Cmnd_Alias.*CAAGENTCMDS=.*/,/[a-z]$/p' /etc/sudoers
 make_change_add()
 {
   local haystack="${1}"
@@ -684,10 +660,10 @@ make_change_add()
 
   # Determine formatting for ${value}
   type="$(echo "${value}"|awk '$0 !~ /,/{print 1}')"
-  if [ ${type} -eq 0 ]; then
+  if [ ${type} -eq 1 ]; then
 
     # Split ${value} into an array
-    IFS=' ' read -a act <<< "${value}"
+    IFS=',' read -a act <<< "${value}"
   else
     act="${value}"
   fi
@@ -701,7 +677,7 @@ make_change_add()
   info+=("INFO: Total additions to '${key}' #${#act[@]} (${act[@]})-")
 
   # Create ${search} from ${needle}
-  local search=$(grep -i "${needle}" "${haystack}")
+  local search=$(sed -ne "/${needle}/,/[a-zA-Z0-9]$/p" ${haystack})
 
   # If ${search} is empty then set it to ${needle}
   if [ "${search}" == "" ]; then
@@ -744,11 +720,11 @@ make_change_add()
 
   # Make the change
   if [ ${add} -eq 0 ]; then
-    
+
     # Edit existing ${mode} for ${key_orig}
     do_sed "${original}" "${haystack}" "${search}" "${replacement}"
   else
-    
+
     # Add ${mode} ${key_orig} values
     do_add "${haystack}" "${replacement}"
   fi
@@ -776,7 +752,7 @@ make_change_remove()
   fi
 
   # Find the specified alias
-  local search=$(grep -i "${needle}" "${haystack}")
+  local search=$(sed -ne "/${needle}/,/[a-zA-Z0-9]$/p" ${haystack})
 
   # Nothing found in ${search} so exit
   if [ "${search}" == "" ]; then
