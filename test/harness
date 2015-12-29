@@ -12,7 +12,7 @@ cwd=$(pwd)
 PATH=$PATH:${cwd}
 
 # Path for the manage-sudoers tool
-sudoers="$(dirname ${cwd})../manage-sudoers"
+sudoers="$(dirname ${cwd})/manage-sudoers"
 
 # Configuration file for test data
 config=${cwd}/assets/config
