@@ -42,8 +42,9 @@ declare -A permissions
 permissions[WWWHOSTS]="WWWUSERS=WWWCMNDS,/sbin/who"
 permissions[DBHOSTS]="DBUSERS=DBCMNDS,/sbin/who"
 permissions[MONHOSTS]="MONUSERS=MONCMNDS,/sbin/who"
-permissions[%cdrom]="localhost=(ALL)NOPASSWD:/sbin/mount"
-permissions[%tape]="games=(ALL)NOPASSWD:/sbin/dd"
+permissions[tape]="games=ALL/sbin/dd,/bin/w"
+permissions[%cdrom]="localhost=(ALL)NOPASSWD:/sbin/mount,/bin/w"
+permissions[+games]="ALL=(mail)/sbin/mount,/bin/w"
 
 # Associative array of alternate files implementing the '#include sudoers.d/' functionality
 declare -A alt_sudoers

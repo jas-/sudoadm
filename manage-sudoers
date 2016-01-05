@@ -420,6 +420,8 @@ find_sudoer_path()
 #  1 - Boolean to create file if it doesn't exist
 find_sudoer()
 {
+  # x=$(man sudoers 2> /dev/null|grep "List of who can run what"|awk '$1 ~ /^\//{print $1}')
+
   local needle="${sudoer}"
 
   # Make ${sudoer} if it doesn't exist & ${newfile} is true
@@ -434,8 +436,9 @@ find_sudoer()
     else
 
       # Search for the filename provided
-      local haystack=$(find_sudoer_path)
-      needle=$(find "${haystack}" -type f -name "$(basename ${sudoer})")
+      #local haystack=$(find_sudoer_path)
+      #needle=$(find "${haystack}" -xdev -type f -name "$(basename ${sudoer})")
+      needle=$(find / -xdev -type f -name "$(basename ${sudoer})"|head -1)
       if [ -f ${needle} ]; then
         echo "${needle}" && return 0
       fi
@@ -663,18 +666,18 @@ make_change_add()
   if [ ${type} -eq 1 ]; then
 
     # Split ${value} into an array
-    IFS=',' read -a act <<< "${value}"
+    IFS=',' read -a obj <<< "${value}"
   else
-    act="${value}"
+    obj="${value}"
   fi
 
   # If ${obj[@]} is empty exit
-  if [ ${#act[@]} -lt 1 ]; then
+  if [ ${#obj[@]} -lt 1 ]; then
     errors+=("ERROR: Cannot create empty ${key}-")
     return 1
   fi
 
-  info+=("INFO: Total additions to '${key}' #${#act[@]} (${act[@]})-")
+  info+=("INFO: Total additions to '${key}' #${#obj[@]} (${obj[@]})-")
 
   # Create ${search} from ${needle}
   local search=$(sed -ne "/${needle}/,/[a-zA-Z0-9]$/p" ${haystack})
@@ -691,30 +694,36 @@ make_change_add()
   else
     local perm=$(echo "${search}"|awk -F= '{print $1}'|awk '{print $2}')
     local mode="${key_orig}"
+
+    local one=$(echo "${search}"|cut -d ' ' -f 1)
+    local two=$(echo "${search}"|cut -d ' ' -f 2)
+
+    info+=("one: ${one}-")
+    info+=("two: ${two}-")
   fi
 
   # Obtain an array of users from ${search}
-  local usrs=($(echo "${search}"|awk -F= '{print $2}'|tr ',' ' '))
+  local objs=($(echo "${search}"|awk -F= '{print $2}'|tr ',' ' '))
 
-  # If ${#usrs[@]} greater than 0 perform intersection from ${act[@]} & ${search} doesn't equal ${needle}
-  if [[ "${search}" != "${needle}" ]] && [[ ${#usrs[@]} -gt 0 ]]; then
+  # If ${#objs[@]} greater than 0 perform intersection from ${obj[@]} & ${search} doesn't equal ${needle}
+  if [[ "${search}" != "${needle}" ]] && [[ ${#objs[@]} -gt 0 ]]; then
 
-    # Perform intersection of ${usrs[@]} from ${act[@]}
-    local accts=($(comm <(printf '%s\n' "${usrs[@]}"|sort -u) <(printf '%s\n' "${act[@]}"|sort -u)))
+    # Perform intersection of ${objs[@]} from ${obj[@]}
+    local fobjs=($(comm <(printf '%s\n' "${objs[@]}"|sort -u) <(printf '%s\n' "${obj[@]}"|sort -u)))
   else
 
-    # Since ${#usrs[@]} was empty use ${act[@]} as ${res}
-    local accts="$(echo ${act[@]})"
+    # Since ${#objs[@]} was empty use ${obj[@]} as ${res}
+    local fobjs="$(echo ${obj[@]})"
   fi
 
   # Set the replacement value to ${replacement}
   if [ "${permissions}" == "" ]; then
-    replacement="${mode} ${key_orig} = $(echo "${accts[@]}"|tr ' ' ',')"
+    replacement="${mode} ${key_orig} = $(echo "${fobjs[@]}"|tr ' ' ',')"
   else
     if [ ${add} -eq 1 ]; then
-      replacement="${mode} $(echo "${accts[@]}"|tr ' ' ',')"
+      replacement="${mode} $(echo "${fobjs[@]}"|tr ' ' ',')"
     else
-      replacement="${mode} ${perm}=$(echo "${accts[@]}"|tr ' ' ',')"
+      replacement="${mode} ${perm}=$(echo "${fobjs[@]}"|tr ' ' ',')"
     fi
   fi
 
@@ -769,16 +778,40 @@ make_change_remove()
   if [[ "${key}" != "" ]] && [[ ${#obj[@]} -gt 0 ]] && [[ "${key_orig}" != "${value}" ]]; then
 
     # Obtain the mode (User_Alias, Host_ALias etc)
-    local mode=($(echo "${search}"|awk -F= '{print $1}'))
+    local mode=($(echo "${search}"|awk '{print $1}'))
 
-    # Obtain an array of users from ${search}
-    local usrs=($(echo "${search}"|awk -F= '{print $2}'|tr ',' ' '))
+    # Get the tag_spec if it exists
+    local tspec="$(echo "${search}"|awk 'match($0, /(N?O?PASSWD|N?O?EXEC|N?O?SETENV|N?O?LOG_INPUT|N?O?LOG_OUTPUT)/, spc){print spc[0]}')"
 
-    # Perform intersection of ${usrs[@]} from ${obj[@]}
-    local res=($(comm -23 <(printf '%s\n' "${usrs[@]}"|sort -u) <(printf '%s\n' "${obj[@]}"|sort -u)))
+    # Obtain an account if it exists
+    local acct=$(echo "${search}"|awk '{split($2, obj, "="); print obj[1]}')
+
+    # Obtain an array of objects from ${search}
+    if [[ ! "${search}" =~ ":" ]]; then
+#      local perm=($(echo "${search}"|awk -F= '{print $1}'))
+      local objs=($(echo "${search}"|awk -F= '{print $2}'|tr ',' ' '))
+    else
+      local perm=($(echo "${search}"|awk -F: '{print $1}'))
+      local objs=($(echo "${search}"|awk -F: '{print $2}'|tr ',' ' '))
+    fi
+
+    info+=("TSPEC: ${tspec}-")
+    info+=("MODE: ${mode}-")
+    info+=("ACCT: ${acct}-")
+    info+=("PERM: ${perm}-")
+    info+=("OBJ: ${obj[@]}-")
+    info+=("OBJS: ${objs[@]}-")
+
+    # Perform intersection of ${objs[@]} from ${obj[@]}
+    local res=($(comm -23 <(printf '%s\n' "${objs[@]}"|sort -u) <(printf '%s\n' "${obj[@]}"|sort -u)))
+    info+=("RES: ${res[@]}-")
 
     # Create the appropriate ${replacement} string
-    replacement="${mode} ${key_orig} = $(echo "${res[@]}"|tr ' ' ',')"
+    if [ "${permissions}" == "" ]; then
+      replacement="${mode} ${key_orig} = $(echo "${res[@]}"|tr ' ' ',')"
+    else
+      replacement="${mode} = $(echo "${res[@]}"|tr ' ' ',')"
+    fi
 
     # Make the change
     do_sed "${original}" "${haystack}" "${search}" "${replacement}"
@@ -821,9 +854,9 @@ make_change()
 
   if [ "${validate}" -eq 0 ]; then
     return 0
-  else
-    errors+=("ERROR: ${tmp_file} did not pass validation-")
-    return 1
+#  else
+#    errors+=("ERROR: ${tmp_file} did not pass validation-")
+#    return 1
   fi
 }
 

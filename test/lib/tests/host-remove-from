@@ -73,7 +73,9 @@ if [ ${#host_aliases[@]} -gt 0 ]; then
 
         # Randomly pick an element from ${user_aliases[${data}]} to remove
         item=$(echo "${items[${random}]}")
-        break
+        if [ "${item}" != "" ]; then
+          break
+        fi
       fi
     done
 

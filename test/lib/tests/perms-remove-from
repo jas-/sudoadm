@@ -63,8 +63,16 @@ if [ ${#permissions[@]} -gt 0 ]; then
     # Sleep for .1 seconds to accomodate for race conditions
     sleep 1
 
-    # Generate an array from ${permissions[${data}]}
-    IFS=',' read -a items <<< "$(echo "${permissions[${data}]}")"
+    # Re-assign ${permissions[${data}]} to ${tmp}
+    tmp="${permissions[${data}]}"
+
+    # Split ${tmp} @ : if it exists
+    if [ "$(echo ${tmp}|grep ":")" != "" ]; then
+      tmp="$(echo ${tmp}|awk '{split($0, obj, ":");print obj[2]}')"
+    fi
+
+    # Generate an array from ${tmp}
+    IFS=',' read -a items <<< "$(echo "${tmp}")"
 
     # Generate a random number for this iteration
     while [[ ${random} == "" ]] || [[ ${random} -gt ${#items[@]} ]]; do
@@ -73,19 +81,23 @@ if [ ${#permissions[@]} -gt 0 ]; then
 
         # Randomly pick an element from ${user_aliases[${data}]} to remove
         item=$(echo "${items[${random}]}")
-        break
+        if [ "${item}" != "" ]; then
+          break
+        fi
       fi
     done
 
     # Now remove the alias ${data}
     bogus=$(${sudoadm} -Vf ${name} -rP ${data} "${item}")
+      echo ${bogus}
     if [ $? -ne 0 ]; then
-      echo "Failed removal of new '${data}' Permissions" && exit 1
+      echo "Failed removal of new '${item}' from the '${data}' Permissions" && exit 1
     fi
 
     # Use ${item} to create ${haystack} from ${name}
     haystack=$(grep "${item}" ${name})
     if [ "${haystack}" != "" ]; then
+      echo ${bogus}
       echo "Failed validation for remvoval of '${item}' from the '${data}' Permissions" && exit 1
     fi
 

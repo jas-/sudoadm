@@ -1,0 +1,51 @@
+#!/bin/bash
+
+perms=("USER1 SERVER1=(ALL)NOPASSWD:/sbin/mount/bin/w"
+"USER2 localhost=PASSWD:/sbin/mount/bin/w"
+"GROUP1 SERVERS1=(abc:def)EXEC:/sbin/mount/bin/w"
+"GROUP2 SERVERS2=(ALL)NOEXEC:/sbin/mount/bin/w"
+"USER3 SERVER3=(GROUP1)NOSETENV:/sbin/mount/bin/w"
+"GROUP3 SETENV:/sbin/mount/bin/w/sbin/abc -v"
+"+daemon localhost=(ALL)LOG_INPUT:/sbin/mount/bin/w"
+"%cdrom (ALL)NOLOG_INPUT:/sbin/mount/bin/w"
+"+USER4 SERVER1=(USER1:GROUP2)LOG_OUTPUT:/sbin/mount/bin/w"
+"jack localhost=(ALL)NOLOG_OUTPUT:/sbin/mount/bin/w")
+
+declare -A perms1
+perms1[USER1]="SERVER1=(ALL)NOPASSWD:/sbin/mount,/bin/w"
+perms1[USER2]="localhost=PASSWD:/sbin/mount,/bin/w"
+perms1[GROUP1]="SERVERS1=(abc:def)EXEC:/sbin/mount,/bin/w"
+perms1[GROUP2]="SERVERS2=(ALL)NOEXEC:/sbin/mount,/bin/w"
+perms1[USER3]="SERVER3=(GROUP1)NOSETENV:/sbin/mount,/bin/w"
+perms1[GROUP3]="SETENV:/sbin/mount,/bin/w,/sbin/abc -v"
+perms1[+daemon]="localhost=(ALL)LOG_INPUT:/sbin/mount,/bin/w"
+perms1[%cdrom]="(ALL)NOLOG_INPUT:/sbin/mount,/bin/w"
+perms1[+USER4]="SERVER1=(USER1:GROUP2)LOG_OUTPUT:/sbin/mount,/bin/w"
+perms1[jack]="localhost=(ALL)NOLOG_OUTPUT:/sbin/mount,/bin/w"
+
+# Parse the permission stanza
+#  1 - The haystack
+parse_perms() {
+  local haystack="${1}"
+
+  local perm=$(echo "${haystack}"|awk '{print $1}')
+  local servers=$(echo "${haystack}"|awk 'match($2, /(.*)=/, perms){print perms[1]}')
+  local tspec=$(echo "${haystack}"|awk 'match($2, /(N?O?PASSWD|N?O?EXEC|N?O?SETENV|N?O?LOG_INPUT|N?O?LOG_OUTPUT)/, tspec){print tspec[1]}')
+  local usgs=$(echo "${haystack}"|awk 'match($2, /(\(.*\)).*:/, ug){print ug[1]}')
+  local aliases=$(echo "${haystack}"|tr ' ' '@'|awk 'match($0, /.*:(.*)$/, perms){print perms[1]}'|tr '@' ' ')
+
+  echo "perm=${perm} server=${servers} ug=${usgs} tag=${tspec} cmds=${aliases}"
+}
+
+for item in "${perms[@]}"; do
+  echo "Parsing: ${item}..."
+  parse_perms "${item}"
+  echo ""
+done
+
+for item in "${!perms1[@]}"; do
+  echo "Parsing: ${item} ${perms1[${item}]}..."
+  parse_perms "${item} ${perms1[${item}]}"
+  echo ""
+done
+
