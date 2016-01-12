@@ -446,11 +446,15 @@ find_sudoer()
     else
 
       # Search for the filename provided
-      #local haystack=$(find_sudoer_path)
-      #needle=$(find "${haystack}" -xdev -type f -name "$(basename ${sudoer})")
-      needle=$(find / -xdev -type f -name "$(basename ${sudoer})"|head -1)
+      local haystack=$(find_sudoer_path)
+      needle=$(find "${haystack}" -xdev -type f -name "$(basename ${sudoer})")
       if [ -f ${needle} ]; then
         echo "${needle}" && return 0
+      else
+        needle=$(find / -xdev -type f -name "$(basename ${sudoer})"|head -1)
+        if [ -f ${needle} ]; then
+          echo "${needle}" && return 0
+        fi
       fi
     fi
   fi
