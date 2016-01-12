@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Test harness for manage-sudoers functionality
+# Test harness for sudoadmin functionality
 
 # Get our name
 prog=$(basename echo $0)
@@ -11,8 +11,8 @@ cwd=$(pwd)
 # Set ${cwd} within our $PATH
 PATH=$PATH:${cwd}
 
-# Path for the manage-sudoers tool
-sudoers="$(dirname ${cwd})/manage-sudoers"
+# Path for the sudoadmin tool
+sudoers="$(dirname ${cwd})/sudoadmin"
 
 # Configuration file for test data
 config=${cwd}/assets/config

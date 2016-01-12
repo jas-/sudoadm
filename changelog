@@ -19,7 +19,7 @@ commit 06dfa15633ded1ea2fdf638dfe4c82cd8e857199
 Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
 Date:   Sun Dec 27 13:48:49 2015 -0700
 
-    manage-sudoers:
+    sudoadmin:
     
       - Fix for find_sudo() function
       - Fix for make_change_add() regarding permissions stanza
@@ -35,7 +35,7 @@ commit 06dfa15633ded1ea2fdf638dfe4c82cd8e857199
 Author: Jason Gerfen <Jason.Gerfen@pacificorp.com>
 Date:   Sun Dec 27 13:48:49 2015 -0700
 
-    manage-sudoers:
+    sudoadmin:
     
       - Fix for find_sudo() function
       - Fix for make_change_add() regarding permissions stanza

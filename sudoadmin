@@ -738,8 +738,8 @@ make_change_add()
 
   info+=("INFO: Total additions to '${key}' #${#obj[@]} (${obj[@]})-")
 
-  # Create ${search} from ${needle}
-  local search=$(sed -ne "/${needle}/,/[a-zA-Z0-9]$/p" ${haystack})
+  # Create ${search} from ${needle} (flattens multiline results)
+  local search=$(sed -ne "/${needle}/,/[a-zA-Z0-9]$/p" ${haystack}|tr '\n' ' ')
 
   # If ${search} is empty then set it to ${needle}
   if [ "${search}" == "" ]; then
