@@ -120,6 +120,7 @@ Additional options:
 EOF
 }
 
+
 # Provide a usage menu
 usage()
 {
@@ -155,6 +156,7 @@ usage()
 
 EOF
 }
+
 
 ###############################################
 # Ensures UID & sets arg list vars            #
@@ -231,6 +233,7 @@ bckup()
   return 0
 }
 
+
 # Perform backup of specified file
 #  1 - File path
 #  2 - Author initials
@@ -258,6 +261,7 @@ backup()
   echo "${info[@]}" && return 0
 }
 
+
 ###############################################
 # Restoration management subroutines          #
 ###############################################
@@ -279,6 +283,7 @@ rstore_search()
 
   echo "${found[@]}"
 }
+
 
 # Find & restore latest backup configuration file
 #  1 - File to restore
@@ -327,6 +332,7 @@ rstore_interactive()
   done
 }
 
+
 # Find & restore latest backup configuration file
 #  1 - File to restore
 rstore()
@@ -342,6 +348,7 @@ rstore()
   # Restore provides return code for procedure
   rstore_helper "${restore}" "${file}"
 }
+
 
 # Restores specified backup file
 #  1 - Backup file
@@ -366,6 +373,7 @@ rstore_helper()
 
   return 0
 }
+
 
 # Initiate restoration procedures
 #  1 - File path
@@ -394,6 +402,7 @@ restore()
   echo "${info[@]}" && return 0
 }
 
+
 ###############################################
 # File management subroutines                 #
 ###############################################
@@ -415,6 +424,7 @@ find_sudoer_path()
 
   echo "${path}"
 }
+
 
 # Find actual sudoer file
 #  1 - Boolean to create file if it doesn't exist
@@ -448,6 +458,7 @@ find_sudoer()
   return 1
 }
 
+
 # Create specified sudoer file
 create_sudoer_file()
 {
@@ -456,6 +467,7 @@ create_sudoer_file()
     chmod 0440 "${1}"
   fi
 }
+
 
 # Create a backup & temporary file
 #  1 - File
@@ -478,6 +490,7 @@ create_temporary_files()
 
   echo "${tmp_file}"
 }
+
 
 # Perform string replace on file (accomodates for GNU & non-GNU versions)
 #  1 - File
@@ -508,6 +521,7 @@ do_sed()
   fi
 }
 
+
 # Perform string addition to file
 #  1 - File
 #  2 - Value
@@ -520,6 +534,7 @@ do_add()
   info+=("INFO: Added ${v}-")
 }
 
+
 ###############################################
 # Common string handling subroutines          #
 ###############################################
@@ -530,6 +545,7 @@ str_to_lower()
 {
   echo "${1}"|tr '[:upper:]' '[:lower:]'
 }
+
 
 # String replace
 #  1 - File
@@ -557,6 +573,7 @@ str_replace()
     echo "${str}" >> $file
   fi
 }
+
 
 # Flatten file to string & replace
 #  1 - File
@@ -602,11 +619,17 @@ flatten_to_replace()
   echo "${all}" | sed -e "s|${pattern}|${str}|g" | tr ':' '\n' > ${file}
 }
 
+
+###############################################
+# sudoer specific string handling subroutines #
+###############################################
+
 # Handle user aliases
 pattern_user()
 {
   echo "^User_Alias.*${user}.*=.*"
 }
+
 
 # Handle host aliases
 pattern_host()
@@ -614,11 +637,13 @@ pattern_host()
   echo "^Host_Alias.*${host}.*=.*"
 }
 
+
 # Handle command aliases
 pattern_command()
 {
   echo "^Cmnd_Alias.*${command}.*"
 }
+
 
 # Handle default options
 pattern_default_opts()
@@ -626,11 +651,41 @@ pattern_default_opts()
   echo "^Defaults.*${default}.*"
 }
 
+
 # Handle permissions
 pattern_permissions()
 {
   echo "^${permissions}.*"
 }
+
+
+# Parse aliases
+#  1 - The haystack
+parse_aliases() {
+  local haystack="${1}"
+
+  local mode=$(echo "${haystack}"|awk '{print $1}')
+  local name=$(echo "${haystack}"|awk 'match($2, /(.*)=/, aliases){print aliases[1]}')
+  local objects=$(echo "${haystack}"|tr ' ' '@'|awk 'match($0, /.*=(.*)/, aliases){print aliases[1]}'|tr '@' ' ')
+
+  echo "mode=${mode} name=${name} objects=${objects}"
+}
+
+
+# Parse the permission stanza
+#  1 - The haystack
+parse_perms() {
+  local haystack="${1}"
+
+  local perm=$(echo "${haystack}"|awk '{print $1}')
+  local servers=$(echo "${haystack}"|awk 'match($2, /(.*)=/, perms){print perms[1]}')
+  local tspec=$(echo "${haystack}"|awk 'match($2, /(N?O?PASSWD|N?O?EXEC|N?O?SETENV|N?O?LOG_INPUT|N?O?LOG_OUTPUT)/, tspec){print tspec[1]}')
+  local usgs=$(echo "${haystack}"|awk 'match($2, /(\(.*\)).*:/, ug){print ug[1]}')
+  local aliases=$(echo "${haystack}"|tr ' ' '@'|awk 'match($0, /.*:(.*)$/, perms){print perms[1]}'|tr '@' ' ')
+
+  echo "perm=${perm} server=${servers} ug=${usgs} tag=${tspec} cmds=${aliases}"
+}
+
 
 ###############################################
 # Subroutines that perform changes            #
@@ -739,6 +794,7 @@ make_change_add()
   fi
 }
 
+
 # Make removals
 #  1 - Haystack (file)
 #  2 - Original (file)
@@ -823,6 +879,7 @@ make_change_remove()
   fi
 }
 
+
 # Make change according to mode
 #  1 - Needle (pattern)
 #  2 - Haystack (file)
@@ -860,6 +917,7 @@ make_change()
   fi
 }
 
+
 ###############################################
 # Input validation & output verification      #
 ###############################################
@@ -873,6 +931,7 @@ test_options()
   # command args
   echo "Not yet implemented"
 }
+
 
 # Use visudo to evaluate the temporary file prior to
 # copying back to working sudoer
@@ -898,6 +957,7 @@ verify_visudo()
   d=$("${visudo}" -c -q -f "${tmp_file}" 2>/dev/null)
   echo $?
 }
+
 
 ###############################################
 # main() output (errors & info) from robot()  #
@@ -955,6 +1015,7 @@ main()
   echo "${prog}: Ok"
   exit 0
 }
+
 
 # robot
 # Considered ugly, too big due to conditionals
@@ -1092,6 +1153,7 @@ robot()
   # Return code
   return 0
 }
+
 
 # Robot, do work
 main "robot"
