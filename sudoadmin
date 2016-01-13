@@ -19,7 +19,7 @@ host=
 command=
 default=
 permissions=
-value="${!#}" # Assign the last element in the @ARG list to ${value}
+value="$(echo "${!#}"|tr ' ' '@')" # Assign the last element in the @ARG list to ${value}
 
 # Additional options vars
 validate=0
@@ -578,6 +578,17 @@ str_replace()
   fi
 }
 
+# Split string at index
+#  1 - String
+#  2 - Index
+#  3 - Rindex
+split_at_index()
+{
+  local string="${1}"
+  local index=${2}
+  
+  echo "${string}"|awk -v index="${index}" '{split($0, obj, "=");print obj[index]}'
+}
 
 # Flatten file to string & replace
 #  1 - File
@@ -684,8 +695,13 @@ parse_perms() {
   local perm=$(echo "${haystack}"|awk '{print $1}')
   local servers=$(echo "${haystack}"|awk 'match($2, /(.*)=/, perms){print perms[1]}')
   local tspec=$(echo "${haystack}"|awk 'match($2, /(N?O?PASSWD|N?O?EXEC|N?O?SETENV|N?O?LOG_INPUT|N?O?LOG_OUTPUT)/, tspec){print tspec[1]}')
-  local usgs=$(echo "${haystack}"|awk 'match($2, /(\(.*\)).*:/, ug){print ug[1]}')
-  local aliases=$(echo "${haystack}"|tr ' ' '@'|awk 'match($0, /.*:(.*)$/, perms){print perms[1]}'|tr '@' ' ')
+  local usgs=$(echo "${haystack}"|awk 'match($2, /(\(.*\)).*/, ug){print ug[1]}')
+
+  if [[ "$(echo "${haystack}"|awk '{print $2}')" =~ : ]]; then
+    local aliases=$(echo "${haystack}"|tr ' ' '@'|awk 'match($0, /.*:(.*)$/, perms){print perms[1]}'|tr '@' ' ')
+  else
+    local aliases=$(echo "${haystack}"|awk '{print $2}'|tr ' ' '@'|awk 'match($0, /\(.*\)(.*)$/, perms){print perms[1]}'|tr '@' ' ')
+  fi
 
   echo "perm=${perm} server=${servers} ug=${usgs} tag=${tspec} cmds=${aliases}"
 }
@@ -757,8 +773,6 @@ make_change_add()
     local one=$(echo "${search}"|cut -d ' ' -f 1)
     local two=$(echo "${search}"|cut -d ' ' -f 2)
 
-    info+=("one: ${one}-")
-    info+=("two: ${two}-")
   fi
 
   # Obtain an array of users from ${search}
@@ -790,11 +804,11 @@ make_change_add()
   if [ ${add} -eq 0 ]; then
 
     # Edit existing ${mode} for ${key_orig}
-    do_sed "${original}" "${haystack}" "${search}" "${replacement}"
+    do_sed "${original}" "${haystack}" "${search}" "$(echo "${replacement}"|tr '@' ' ')"
   else
 
     # Add ${mode} ${key_orig} values
-    do_add "${haystack}" "${replacement}"
+    do_add "${haystack}" "$(echo "${replacement}"|tr '@' ' ')"
   fi
 }
 
@@ -816,8 +830,7 @@ make_change_remove()
 
   # Split ${value} into an array
   if [ "${value}" != "" ]; then
-    IFS=' ' read -a obj <<< "${value}"
-    info+=("INFO: Total removals #${#obj[@]} (${obj[@]})-")
+    IFS=',' read -a obj <<< "${value}"
   fi
 
   # Find the specified alias
@@ -829,67 +842,71 @@ make_change_remove()
     return 1
   fi
 
-  # Parse ${search} into chunks
-  if [ "${permissions}" != "" ]; then
-    parsed_stanza="$(parse_perms "${search}")"
-  else
-    parsed_stanza="$(parse_alias "${search}")"
-  fi
-
-  info+=("SEARCH: ${search}-")
-  info+=("STANZA: ${parsed_stanza}-") && return 
-
-  # if ${key} present & ${value} empty erase alias
+  # if ${key} present & ${value} empty erase ${search}
   if [[ "${key}" != "" ]] && [[ "${key_orig}" == "${value}" ]]; then
     do_sed "${original}" "${haystack}" "^${search}"
   fi
 
+  # Parse ${search} into chunks to create ${replacement} prefix & ${objects[@]} for comparison
+  if [ "${permissions}" != "" ]; then
+    parsed_stanza="$(parse_perms "${search}")"
+
+    # Obtain the stanza from ${parsed_stanza}
+    local stanza="$(echo "${parsed_stanza}"|awk '{split($1, obj, "=");print obj[2]}')"
+
+    # Obtain the server value from ${parsed_stanza}
+    local server="$(echo "${parsed_stanza}"|awk '{split($2, obj, "=");print obj[2]}')"
+
+    # Obtain the user/group from ${parsed_stanza}
+    local ug="$(echo "${parsed_stanza}"|awk '{split($3, obj, "=");print obj[2]}')"
+
+    # Obtain the tag_spec from ${parsed_stanza}
+    local tag="$(echo "${parsed_stanza}"|awk '{split($4, obj, "=");print obj[2]}')"
+
+    # Obtain the allowed commands from ${parsed_stanza}
+    local objects="$(echo "${parsed_stanza}"|awk '{split($5, obj, "=");print obj[2]}')"
+
+    # Create the replacement string prefix
+    if [ "${tag}" != "" ]; then
+      local replacement="${stanza} ${server} = ${ug}${tag}:"
+    else
+      local replacement="${stanza} ${server} = ${ug}"
+    fi
+  else
+    parsed_stanza="$(parse_alias "${search}")"
+
+    # Obtain the stanza from ${parsed_stanza}
+    local stanza="$(echo "${parsed_stanza}"|awk '{split($1, obj, "=");print obj[2]}')"
+
+    # Obtain the Alias from ${parsed_stanza}
+    local alias="$(echo "${parsed_stanza}"|awk '{split($2, obj, "=");print obj[2]}')"
+
+    # Obtain the members from ${parsed_stanza}
+    local objects="$(echo "${parsed_stanza}"|awk '{split($3, obj, "=");print obj[2]}')"
+
+    # Create the replacement string prefix
+    local replacement="${stanza} ${alias} = "
+  fi
+
+  info+=("INFO: Using ${search}-")
+  info+=("INFO: Parsed as ${parsed_stanza}-")
+
   # if ${key} & ${value} present remove ${value} from ${key}
   if [[ "${key}" != "" ]] && [[ ${#obj[@]} -gt 0 ]] && [[ "${key_orig}" != "${value}" ]]; then
 
-    # Obtain the mode (User_Alias, Host_ALias etc)
-    local mode=($(echo "${search}"|awk '{print $1}'))
-
-    # Get the tag_spec if it exists
-    local tspec="$(echo "${search}"|awk 'match($0, /(N?O?PASSWD|N?O?EXEC|N?O?SETENV|N?O?LOG_INPUT|N?O?LOG_OUTPUT)/, spc){print spc[0]}')"
-
-    # Obtain an account if it exists
-    local acct=$(echo "${search}"|awk '{split($2, obj, "="); print obj[1]}')
-
-    # Obtain an array of objects from ${search}
-    if [[ ! "${search}" =~ ":" ]]; then
-#      local perm=($(echo "${search}"|awk -F= '{print $1}'))
-      local objs=($(echo "${search}"|awk -F= '{print $2}'|tr ',' ' '))
-    else
-      local perm=($(echo "${search}"|awk -F: '{print $1}'))
-      local objs=($(echo "${search}"|awk -F: '{print $2}'|tr ',' ' '))
-    fi
-
-    info+=("TSPEC: ${tspec}-")
-    info+=("MODE: ${mode}-")
-    info+=("ACCT: ${acct}-")
-    info+=("PERM: ${perm}-")
-    info+=("OBJ: ${obj[@]}-")
-    info+=("OBJS: ${objs[@]}-")
+    # Convert ${objects} into an array
+    IFS=',' read -a objs <<< "${objects}"
+    info+=("INFO: Total removals #${#obj[@]} (${obj[@]})-")
 
     # Perform intersection of ${objs[@]} from ${obj[@]}
     local res=($(comm -23 <(printf '%s\n' "${objs[@]}"|sort -u) <(printf '%s\n' "${obj[@]}"|sort -u)))
-    info+=("RES: ${res[@]}-")
 
     # Create the appropriate ${replacement} string
-    if [ "${permissions}" == "" ]; then
-      replacement="${mode} ${key_orig} = $(echo "${res[@]}"|tr ' ' ',')"
-    else
-      replacement="${mode} = $(echo "${res[@]}"|tr ' ' ',')"
-    fi
+    replace="${replacement} $(echo "${res[@]}"|tr ' ' ',')"
+    info+=("INFO: Replacement: ${replace}-")
 
     # Make the change
-    do_sed "${original}" "${haystack}" "${search}" "${replacement}"
-  fi
-
-  # if ${key} empty & ${value} present erase all instances of ${value}
-  if [[ "${key}" == "" ]] && [[ "${!obj[@]}" -gt 0 ]]; then
-    info+=("INFO: Iterate and remove all found instances of obj elements")
+    do_sed "${original}" "${haystack}" "${search}" "${replace}"
   fi
 }
 

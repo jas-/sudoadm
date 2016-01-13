@@ -44,11 +44,13 @@ permissions[USER2]="localhost=PASSWD:/sbin/mount,/bin/w"
 permissions[GROUP1]="SERVERS1=(abc:def)EXEC:/sbin/mount,/bin/w"
 permissions[GROUP2]="SERVERS2=(ALL)NOEXEC:/sbin/mount,/bin/w"
 permissions[USER3]="SERVER3=(GROUP1)NOSETENV:/sbin/mount,/bin/w"
-permissions[GROUP3]="SETENV:/sbin/mount,/bin/w,/sbin/abc -v"
+permissions[GROUP3]="ALL=(ALL)SETENV:/sbin/mount,/bin/w,/sbin/abc -v"
 permissions[+daemon]="localhost=(ALL)LOG_INPUT:/sbin/mount,/bin/w"
-permissions[%cdrom]="(ALL)NOLOG_INPUT:/sbin/mount,/bin/w"
+permissions[%cdrom]="localhost=(ALL)NOLOG_INPUT:/sbin/mount,/bin/w"
 permissions[+USER4]="SERVER1=(USER1:GROUP2)LOG_OUTPUT:/sbin/mount,/bin/w"
 permissions[jack]="localhost=(ALL)NOLOG_OUTPUT:/sbin/mount,/bin/w"
+permissions[ABC]="localhost=(ALL)ABCMDS,/sbin/mount,/bin/w"
+permissions[XYZ]="ALL=(ALL)ABCMDS,/sbin/mount,/bin/w"
 
 # Associative array of alternate files implementing the '#include sudoers.d/' functionality
 declare -A alt_sudoers
