@@ -89,7 +89,8 @@ if [ ${#permissions[@]} -gt 0 ]; then
 
     # Now remove the alias ${data}
     bogus=$(${sudoadm} -Vf ${name} -rP ${data} "${item}")
-      echo ${bogus}
+    echo ""
+    echo ${bogus}
     if [ $? -ne 0 ]; then
       echo "Failed removal of new '${item}' from the '${data}' Permissions" && exit 1
     fi
