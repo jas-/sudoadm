@@ -740,7 +740,7 @@ make_change_add()
 
   # Create ${search} from ${needle} (flattens multiline results)
   local search=$(sed -ne "/${needle}/,/[a-zA-Z0-9]$/p" ${haystack}|tr '\n' ' ')
-info+=("Search: ${search}-")
+
   # If ${search} is empty then set it to ${needle}
   if [ "${search}" == "" ]; then
     search="${needle}"
