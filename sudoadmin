@@ -513,14 +513,14 @@ do_sed()
   local pattern="$(echo "${tmp}"|sed 's/ \+/.*/g')"
   #pattern="${tmp// /.*}"
 
-  info+=("INFO: Pattern: ${pattern}-")
+  info+=("INFO: Pattern: ${pattern}_")
 
   # Replace or remove?
   if [ "${replacement}" != "" ]; then
-    info+=("INFO: Replacmement: ${replacement}-")
+    info+=("INFO: Replacmement: ${replacement}_")
     x=$(sed "s|${pattern}|${replacement}|g" "${file}" | tee "${tmp_file}")
   else
-    info+=("INFO: Removing: ${pattern}-")
+    info+=("INFO: Removing: ${pattern}_")
     x=$(sed "s|${pattern}||g" "${file}" | tee "${tmp_file}")
   fi
 }
@@ -535,7 +535,7 @@ do_add()
   local v="${2}"
 
   echo "${v}" >> "${f}"
-  info+=("INFO: Added ${v}-")
+  info+=("INFO: Added ${v}_")
 }
 
 
@@ -726,18 +726,21 @@ make_change_add()
 
   # If ${key} is empty exit
   if [ "${key}" == "" ]; then
-    errors+=("ERROR: Missing argument, empty key-")
+    errors+=("ERROR: Missing argument, empty key_")
     return 1
   fi
 
   # If ${value} is empty exit
   if [ "${value}" == "" ]; then
-    errors+=("ERROR: Cannot create empty ${key}-")
+    errors+=("ERROR: Cannot create empty ${key}_")
     return 1
   fi
 
   # Apply fix for ${value}
   value="$(echo "${value}"|tr ' ' ',')"
+
+  # Account for '*' when ${value} contains wildcards
+  value="$(echo "${value}"|tr '*' '+')"
 
   # Parse ${value} into chunks (effing ugly bits)
   if [ "${permissions}" == "" ]; then
@@ -780,13 +783,13 @@ make_change_add()
     fi
   fi
 
-  info+=("INFO: Supplied: ${key} ${value}-")
-  info+=("INFO: Parsed additions: ${parsed}-")
-  info+=("INFO: Objects: ${obj}-")
+  info+=("INFO: Supplied: ${key} ${value}_")
+  info+=("INFO: Parsed additions: ${parsed}_")
+  info+=("INFO: Objects: ${obj}_")
 
   # Convert ${objs} into an array
   IFS=',' read -a obj <<< "${obj}"
-  info+=("INFO: Total additions #${#obj[@]} (${obj[@]})-")
+  info+=("INFO: Total additions #${#obj[@]} (${obj[@]})_")
 
   # Create ${search} from ${needle} (flattens multiline results)
   local search=$(sed -ne "/${needle}/,/[a-zA-Z0-9]$/p" ${haystack}|tr '\n' ' ')
@@ -841,8 +844,8 @@ make_change_add()
       local replacement="${stanza} ${alias} = "
     fi
 
-    info+=("INFO: Using ${search}-")
-    info+=("INFO: Parsed as ${parsed_stanza}-")
+    info+=("INFO: Using ${search}_")
+    info+=("INFO: Parsed as ${parsed_stanza}_")
   fi
 
   # If ${#objs[@]} greater than 0 perform intersection from ${obj[@]} & ${search} doesn't equal ${needle}
@@ -897,7 +900,7 @@ make_change_remove()
 
   # Nothing found in ${search} so exit
   if [ "${search}" == "" ]; then
-    info+=("INFO: No pattern found for ${needle}-")
+    info+=("INFO: No pattern found for ${needle}_")
     return 1
   fi
 
@@ -947,22 +950,22 @@ make_change_remove()
     local replacement="${stanza} ${alias} = "
   fi
 
-  info+=("INFO: Using ${search}-")
-  info+=("INFO: Parsed as ${parsed_stanza}-")
+  info+=("INFO: Using ${search}_")
+  info+=("INFO: Parsed as ${parsed_stanza}_")
 
   # if ${key} & ${value} present remove ${value} from ${key}
   if [[ "${key}" != "" ]] && [[ ${#obj[@]} -gt 0 ]] && [[ "${key_orig}" != "${value}" ]]; then
 
     # Convert ${objects} into an array
     IFS=',' read -a objs <<< "${objects}"
-    info+=("INFO: Total removals #${#obj[@]} (${obj[@]})-")
+    info+=("INFO: Total removals #${#obj[@]} (${obj[@]})_")
 
     # Perform intersection of ${objs[@]} from ${obj[@]}
     local res=($(comm -23 <(printf '%s\n' "${objs[@]}"|sort -u) <(printf '%s\n' "${obj[@]}"|sort -u)))
 
     # Create the appropriate ${replacement} string
     replace="${replacement} $(echo "${res[@]}"|tr ' ' ',')"
-    info+=("INFO: Replacement: ${replace}-")
+    info+=("INFO: Replacement: ${replace}_")
 
     # Make the change
     do_sed "${original}" "${haystack}" "${search}" "${replace}"
@@ -994,15 +997,15 @@ make_change()
     make_change_remove "${tmp_file}" "${haystack}" "${needle}" "${key}" "${key_orig}" "${obj[@]}"
   fi
 
-  info+=("INFO: Saved in ${tmp_file}-")
+  info+=("INFO: Saved in ${tmp_file}_")
 
   local validate=$(verify_visudo "${tmp_file}")
-  info+=("INFO: Valid syntax? ${validate}-")
+  info+=("INFO: Valid syntax? ${validate}_")
 
   if [ "${validate}" -eq 0 ]; then
     return 0
 #  else
-#    errors+=("ERROR: ${tmp_file} did not pass validation-")
+#    errors+=("ERROR: ${tmp_file} did not pass validation_")
 #    return 1
   fi
 }
@@ -1088,7 +1091,7 @@ main()
     echo "${prog}: Informational messages"
 
     # Convert to an array
-    IFS='-' read -a iobj <<< "${info}"
+    IFS='_' read -a iobj <<< "${info}"
 
     # Iterate verbose messages
     for i in "${iobj[@]}" ; do
@@ -1119,19 +1122,19 @@ robot()
   # Get or create supplied sudoer file
   file=$(find_sudoer)
   if [ $? -ne 0 ]; then
-    errors+=("ERROR: Could not locate or create file-")
+    errors+=("ERROR: Could not locate or create file_")
     echo "${errors[@]}" && return 1
   fi
 
   # Make sure it is valid
   if [ ! -f "${file}" ]; then
-    errors+=("ERROR: Could not locate file (${file}${sudoer})-")
+    errors+=("ERROR: Could not locate file (${file}${sudoer})_")
     echo "${errors[@]}" && return 1
   fi
 
   # Create a temporary file based on sudoer
   local tmp_file=$(create_temporary_files "${file}")
-  info+=("INFO: Created working copy ${tmp_file}-")
+  info+=("INFO: Created working copy ${tmp_file}_")
 
   # Test for presence of file
   if [ ! -f ${file} ]; then
@@ -1175,7 +1178,7 @@ robot()
     needle=$(pattern_user)
     key="User_Alias ${user}"
     key_orig="${user}"
-    info+=("INFO: Working with User_Alias context-")
+    info+=("INFO: Working with User_Alias context_")
   fi
 
   # Create work for host aliases
@@ -1183,7 +1186,7 @@ robot()
     needle=$(pattern_host)
     key="Host_Alias ${host}"
     key_orig="${host}"
-    info+=("INFO: Working with Host_Alias context-")
+    info+=("INFO: Working with Host_Alias context_")
   fi
 
   # Create work for command aliases
@@ -1191,7 +1194,7 @@ robot()
     needle=$(pattern_command)
     key="Cmnd_Alias ${command}"
     key_orig="${command}"
-    info+=("INFO: Working with Cmnd_Alias context-")
+    info+=("INFO: Working with Cmnd_Alias context_")
   fi
 
   # Create work for default options
@@ -1199,7 +1202,7 @@ robot()
     needle=$(pattern_default_opts)
     key="Defaults ${default}"
     key_orig="${default}"
-    info+=("INFO: Working with Default context-")
+    info+=("INFO: Working with Default context_")
   fi
 
   # Create work for default options
@@ -1207,7 +1210,7 @@ robot()
     needle=$(pattern_permissions)
     key="${permissions}"
     key_orig="${permissions}"
-    info+=("INFO: Working with Permissions context-")
+    info+=("INFO: Working with Permissions context_")
   fi
 
   # Make changes if we are not just validating
@@ -1220,12 +1223,12 @@ robot()
 
   # Check return code & copy if valid
   if [ "${result}" -eq 0 ]; then
-    info+=("INFO: Restoring ${file} from ${tmp_file}-")
+    info+=("INFO: Restoring ${file} from ${tmp_file}_")
     cp "${tmp_file}" "${file}"
 
     # Verify file copied, (read-only DMZ filesystems)
     if [ $? -eq 1 ]; then
-      errors+=("ERROR: Could not restore ${file} from ${tmp_file}-")
+      errors+=("ERROR: Could not restore ${file} from ${tmp_file}_")
       echo "${errors[@]}" && return 1
     fi
   fi
