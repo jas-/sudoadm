@@ -53,11 +53,14 @@ if [ ${#permissions[@]} -gt 0 ]; then
     fi
 
     # Create a needle to search for
-    needle="^${data}.*$(echo "${permissions[${data}]}"|sed -e 's|, |.*|g')"
+    needle="^${data}.*"
 
     # Use ${needle} to create ${haystack} from ${name}
     haystack=$(grep "${needle}" ${name})
     if [ "${haystack}" == "" ]; then
+      echo "${bogus}"
+      echo "${needle}"
+      echo "${haystack}"
       echo "Failed validation of new '${data}' Permissions" && exit 1
     fi
 
@@ -92,7 +95,6 @@ if [ ${#permissions[@]} -gt 0 ]; then
 
     # Now remove the alias ${data}
     bogus=$(${sudoadm} -Vf ${name} -rP ${data} "${item}")
-    echo "${bogus}"
     if [ $? -ne 0 ]; then
       echo "Failed removal of new '${item}' from the '${data}' Permissions" && exit 1
     fi
@@ -100,6 +102,9 @@ if [ ${#permissions[@]} -gt 0 ]; then
     # Use ${item} to create ${haystack} from ${name}
     haystack=$(grep "${needle}" ${name}|grep "${item}")
     if [ "${haystack}" != "" ]; then
+      echo "${bogus}"
+      echo "${needle}"
+      echo "${haystack}"
       echo "Failed validation for remvoval of '${item}' from the '${data}' Permissions" && exit 1
     fi
 

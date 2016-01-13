@@ -736,23 +736,57 @@ make_change_add()
     return 1
   fi
 
-  # Determine formatting for ${value}
-  type="$(echo "${value}"|awk '$0 !~ /,/{print 1}')"
-  if [ ${type} -eq 1 ]; then
+  # Apply fix for ${value}
+  value="$(echo "${value}"|tr ' ' ',')"
 
-    # Split ${value} into an array
-    IFS=',' read -a obj <<< "${value}"
+  # Parse ${value} into chunks (effing ugly bits)
+  if [ "${permissions}" == "" ]; then
+    local parsed="$(parse_alias "${key} ${value}")"
+
+    # Obtain the stanza from ${parsed}
+    local stnza="$(echo "${parsed}"|awk '{split($1, obj, "=");print obj[2]}')"
+
+    # Obtain the Alias from ${parsed}
+    local account="$(echo "${parsed}"|awk '{split($2, obj, "=");print obj[2]}')"
+
+    # Obtain the members from ${parsed}
+    local obj="$(echo "${parsed}"|awk '{split($3, obj, "=");print obj[2]}')"
+
+    # Create the replacement string prefix
+    local repl="${stnza} ${account} = "
   else
-    obj="${value}"
+    local parsed="$(parse_perms "${key} ${value}")"
+
+    # Obtain the stanza from ${parsed}
+    local stnza="$(echo "${parsed}"|awk '{split($1, obj, "=");print obj[2]}')"
+
+    # Obtain the server value from ${parsed}
+    local srvr="$(echo "${parsed}"|awk '{split($2, obj, "=");print obj[2]}')"
+
+    # Obtain the user/group from ${parsed}
+    local usrgrp="$(echo "${parsed}"|awk '{split($3, obj, "=");print obj[2]}')"
+
+    # Obtain the tag_spec from ${parsed}
+    local tagspec="$(echo "${parsed}"|awk '{split($4, obj, "=");print obj[2]}')"
+
+    # Obtain the allowed commands from ${parsed}
+    local obj="$(echo "${parsed}"|awk '{split($5, obj, "=");print obj[2]}')"
+
+    # Create the replacement string prefix
+    if [ "${tag}" != "" ]; then
+      local repl="${stnza} ${srvr} = ${usrgrp}${tagspec}:"
+    else
+      local repl="${stnza} ${srvr} = ${usrgrp}"
+    fi
   fi
 
-  # If ${obj[@]} is empty exit
-  if [ ${#obj[@]} -lt 1 ]; then
-    errors+=("ERROR: Cannot create empty ${key}-")
-    return 1
-  fi
+  info+=("INFO: Supplied: ${key} ${value}-")
+  info+=("INFO: Parsed additions: ${parsed}-")
+  info+=("INFO: Objects: ${obj}-")
 
-  info+=("INFO: Total additions to '${key}' #${#obj[@]} (${obj[@]})-")
+  # Convert ${objs} into an array
+  IFS=',' read -a obj <<< "${obj}"
+  info+=("INFO: Total additions #${#obj[@]} (${obj[@]})-")
 
   # Create ${search} from ${needle} (flattens multiline results)
   local search=$(sed -ne "/${needle}/,/[a-zA-Z0-9]$/p" ${haystack}|tr '\n' ' ')
@@ -763,20 +797,53 @@ make_change_add()
     add=1
   fi
 
-  # Obtain the mode (User_Alias, Host_ALias etc)
-  if [ "${permissions}" == "" ]; then
-    local mode=($(echo "${key}"|awk '{print $1}'))
-  else
-    local perm=$(echo "${search}"|awk -F= '{print $1}'|awk '{print $2}')
-    local mode="${key_orig}"
+  # Consolodate  (effing ugly bits)
+  if [ ${add} -ne 1 ]; then
 
-    local one=$(echo "${search}"|cut -d ' ' -f 1)
-    local two=$(echo "${search}"|cut -d ' ' -f 2)
+    # Parse ${search} into chunks to create ${replacement} prefix & ${objects[@]} for comparison
+    if [ "${permissions}" != "" ]; then
+      parsed_stanza="$(parse_perms "${search}")"
 
+      # Obtain the stanza from ${parsed_stanza}
+      local stanza="$(echo "${parsed_stanza}"|awk '{split($1, obj, "=");print obj[2]}')"
+
+      # Obtain the server value from ${parsed_stanza}
+      local server="$(echo "${parsed_stanza}"|awk '{split($2, obj, "=");print obj[2]}')"
+
+      # Obtain the user/group from ${parsed_stanza}
+      local ug="$(echo "${parsed_stanza}"|awk '{split($3, obj, "=");print obj[2]}')"
+
+      # Obtain the tag_spec from ${parsed_stanza}
+      local tag="$(echo "${parsed_stanza}"|awk '{split($4, obj, "=");print obj[2]}')"
+
+      # Obtain the allowed commands from ${parsed_stanza}
+      local objects="$(echo "${parsed_stanza}"|awk '{split($5, obj, "=");print obj[2]}')"
+
+      # Create the replacement string prefix
+      if [ "${tag}" != "" ]; then
+        local replacement="${stanza} ${server} = ${ug}${tag}:"
+      else
+        local replacement="${stanza} ${server} = ${ug}"
+      fi
+    else
+      parsed_stanza="$(parse_alias "${search}")"
+
+      # Obtain the stanza from ${parsed_stanza}
+      local stanza="$(echo "${parsed_stanza}"|awk '{split($1, obj, "=");print obj[2]}')"
+
+      # Obtain the Alias from ${parsed_stanza}
+      local alias="$(echo "${parsed_stanza}"|awk '{split($2, obj, "=");print obj[2]}')"
+
+      # Obtain the members from ${parsed_stanza}
+      local objects="$(echo "${parsed_stanza}"|awk '{split($3, obj, "=");print obj[2]}')"
+
+      # Create the replacement string prefix
+      local replacement="${stanza} ${alias} = "
+    fi
+
+    info+=("INFO: Using ${search}-")
+    info+=("INFO: Parsed as ${parsed_stanza}-")
   fi
-
-  # Obtain an array of users from ${search}
-  local objs=($(echo "${search}"|awk -F= '{print $2}'|tr ',' ' '))
 
   # If ${#objs[@]} greater than 0 perform intersection from ${obj[@]} & ${search} doesn't equal ${needle}
   if [[ "${search}" != "${needle}" ]] && [[ ${#objs[@]} -gt 0 ]]; then
@@ -790,15 +857,7 @@ make_change_add()
   fi
 
   # Set the replacement value to ${replacement}
-  if [ "${permissions}" == "" ]; then
-    replacement="${mode} ${key_orig} = $(echo "${fobjs[@]}"|tr ' ' ',')"
-  else
-    if [ ${add} -eq 1 ]; then
-      replacement="${mode} $(echo "${fobjs[@]}"|tr ' ' ',')"
-    else
-      replacement="${mode} ${perm}=$(echo "${fobjs[@]}"|tr ' ' ',')"
-    fi
-  fi
+  replacement="${repl} $(echo "${fobjs[@]}"|tr ' ' ',')"
 
   # Make the change
   if [ ${add} -eq 0 ]; then
