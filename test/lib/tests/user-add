@@ -42,6 +42,7 @@ if [ ${#user_aliases[@]} -gt 0 ]; then
 
     # Suppress output but handle return code
     bogus=$(${sudoadm} -Vf ${name} -aA ${data} "${user_aliases[${data}]}")
+echo "${bogus}"
     if [ $? -ne 0 ]; then
       echo "Failed addition of new '${data}' User_Alias" && exit 1
     fi

@@ -47,9 +47,7 @@ if [ ${#permissions[@]} -gt 0 ]; then
 
     # Add an alias so we can remove it
     bogus=$(${sudoadm} -Vf ${name} -aP ${data} "${permissions[${data}]}")
-echo "${bogus}"
     if [ $? -ne 0 ]; then
-      echo "${bogus}"
       echo "Failed addition of new '${data}' Permissions" && exit 1
     fi
 
@@ -59,9 +57,6 @@ echo "${bogus}"
     # Use ${needle} to create ${haystack} from ${name}
     haystack=$(grep "${needle}" ${name})
     if [ "${haystack}" == "" ]; then
-      echo "${bogus}"
-      echo "${needle}"
-      echo "${haystack}"
       echo "Failed validation of new '${data}' Permissions" && exit 1
     fi
 
@@ -96,7 +91,6 @@ echo "${bogus}"
 
     # Now remove the alias ${data}
     bogus=$(${sudoadm} -Vf ${name} -rP ${data} "${item}")
-echo "${bogus}"
     if [ $? -ne 0 ]; then
       echo "Failed removal of new '${item}' from the '${data}' Permissions" && exit 1
     fi
@@ -104,9 +98,6 @@ echo "${bogus}"
     # Use ${item} to create ${haystack} from ${name}
     haystack=$(grep "${needle}" ${name}|grep "${item}")
     if [ "${haystack}" != "" ]; then
-      echo "${bogus}"
-      echo "${needle}"
-      echo "${haystack}"
       echo "Failed validation for remvoval of '${item}' from the '${data}' Permissions" && exit 1
     fi
 
