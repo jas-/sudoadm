@@ -577,62 +577,6 @@ str_replace()
   fi
 }
 
-# Split string at index
-#  1 - String
-#  2 - Index
-#  3 - Rindex
-split_at_index()
-{
-  local string="${1}"
-  local index=${2}
-  
-  echo "${string}"|awk -v index="${index}" '{split($0, obj, "=");print obj[index]}'
-}
-
-# Flatten file to string & replace
-#  1 - File
-#  2 - Pattern (regex)
-#  3 - Replacement string
-flatten_to_replace()
-{
-  local file="${1}"
-  local pat="${2}"
-  local repl="${3}"
-  local strip="${4}"
-
-  # Cleanup the file first (removes commented lines)
-  if [ "${strip}" != "" ]; then
-    do_sed "${file}" "^#"
-  fi
-
-  # Create a string from the file by replacing line endings
-  local all=$(cat "${file}"|tr '\n' ':')
-
-  # Search for pattern within original file
-  local pattern=$(cat "${file}"|grep -i "${pat}"|tr '\n' ':')
-
-  # Create an array of lines matching our supplied pattern
-  IFS=":" read -a arr <<< "${pattern}"
-
-  local str=""
-  local int=0
-
-  # Iterate our matched lines array
-  for item in "${arr[@]}" ; do
-    if [ $int -eq $((${#arr[@]}-1)) ]; then
-      str="${str}:${repl}:${item}"
-    else
-      str=$([ "${str}" != "" ] && echo "${str}:${item}" || echo "${item}")
-    fi
-    int=$((int+1))
-  done
-
-  str="${str}:"
-
-  # Convert string back to file (with line endings)
-  echo "${all}" | sed -e "s|${pattern}|${str}|g" | tr ':' '\n' > ${file}
-}
-
 
 ###############################################
 # sudoer specific string handling subroutines #
