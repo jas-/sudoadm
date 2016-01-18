@@ -39,17 +39,18 @@ user_aliases[MONUSERS]="mon-user-1, mon-user-2, mon-user-3"
 
 # Associative array of permissions
 declare -A permissions
-permissions[USER1]="SERVER1=(ALL)NOPASSWD:/sbin/mount,/bin/w"
-permissions[USER2]="localhost=PASSWD:/sbin/mount,/bin/w"
-permissions[GROUP1]="SERVERS1=(abc:def)EXEC:/sbin/mount,/bin/w"
+permissions[USER1]="SERVER1 = (ALL) NOPASSWD:/sbin/mount,/bin/w"
+permissions[USER1]="ALL = /bin/wtf -abc"
+permissions[USER2]="localhost = PASSWD:/sbin/mount,/bin/w"
+permissions[GROUP1]="SERVERS1 = (abc:def)EXEC:/sbin/mount,/bin/w"
 permissions[GROUP2]="SERVERS2=(ALL)NOEXEC:/sbin/mount,/bin/w"
-permissions[USER3]="SERVER3=(GROUP1)NOSETENV:/sbin/mount,/bin/w"
-permissions[GROUP3]="ALL=(ALL)SETENV:/sbin/mount,/bin/w,/sbin/abc -v"
+permissions[USER3]="SERVER3=(GROUP1) NOSETENV:/sbin/mount,/bin/w"
+permissions[GROUP3]="ALL = (ALL)SETENV:/sbin/mount,/bin/w,/sbin/abc -v"
 permissions[+daemon]="localhost=(ALL)LOG_INPUT:/sbin/mount,/bin/w"
 permissions[%cdrom]="localhost=(ALL)NOLOG_INPUT:/sbin/mount,/bin/w"
 permissions[+USER4]="SERVER1=(USER1:GROUP2)LOG_OUTPUT:/sbin/mount,/bin/w"
 permissions[jack]="localhost=(ALL)NOLOG_OUTPUT:/sbin/mount,/bin/w"
-permissions[ABC]="localhost=(ALL)ABCMDS,/sbin/mount,/bin/w"
+permissions[ABC]="SERVER1=ABCMDS,/sbin/mount,/bin/w"
 permissions[XYZ]="ALL=(ALL)ABCMDS,/sbin/mount,/db2/*/db2_software/adm/db2licm -l show detail"
 
 # Associative array of alternate files implementing the '#include sudoers.d/' functionality

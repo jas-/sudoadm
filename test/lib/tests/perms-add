@@ -47,7 +47,7 @@ if [ ${#permissions[@]} -gt 0 ]; then
     fi
 
     # Create a needle to search for
-    needle="^${data}.*$(echo "${permissions[${data}]}"|sed -e 's|, |.*|g')"
+    needle="^${data}.*"
 
     # Use ${needle} to create ${haystack} from ${name}
     haystack=$(grep "${needle}" ${name})

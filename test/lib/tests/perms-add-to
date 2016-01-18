@@ -47,12 +47,13 @@ if [ ${#permissions[@]} -gt 0 ]; then
 
     # Add an alias so we can remove it
     bogus=$(${sudoadm} -Vf ${name} -aP ${data} "${permissions[${data}]}")
+    echo "${bogus}"
     if [ $? -ne 0 ]; then
       echo "Failed addition of new '${data}' Permissions" && exit 1
     fi
 
     # Create a needle to search for
-    needle="^${data}.*$(echo "${permissions[${data}]}"|sed -e 's|, |.*|g')"
+    needle="^${data}.*"
 
     # Use ${needle} to create ${haystack} from ${name}
     haystack=$(grep "${needle}" ${name})
@@ -68,6 +69,7 @@ if [ ${#permissions[@]} -gt 0 ]; then
 
     # Now add ${item} the alias ${data}
     bogus=$(${sudoadm} -Vf ${name} -aP ${data} "${item}")
+echo "${bogus}"
     if [ $? -ne 0 ]; then
       echo "Failed to add '${item}' to '${data}' new Permissions" && exit 1
     fi
