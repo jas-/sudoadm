@@ -92,7 +92,8 @@ parse_perms() {
 
     print stanza " " server " " ug " " tag " " cmds
 
-  }'
+  }'|sed -e '/= /d'
+  # awk '{ gsub(/^[ \t]+|[ \t]+$/, ""); print }'
 }
 
 for item in "${perms[@]}"; do

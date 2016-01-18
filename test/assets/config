@@ -51,7 +51,7 @@ permissions[%cdrom]="localhost=(ALL)NOLOG_INPUT:/sbin/mount,/bin/w"
 permissions[+USER4]="SERVER1=(USER1:GROUP2)LOG_OUTPUT:/sbin/mount,/bin/w"
 permissions[jack]="localhost=(ALL)NOLOG_OUTPUT:/sbin/mount,/bin/w"
 permissions[ABC]="SERVER1=ABCMDS,/sbin/mount,/bin/w"
-permissions[XYZ]="ALL=(ALL)ABCMDS,/sbin/mount,/db2/*/db2_software/adm/db2licm -l show detail"
+permissions[XYZ]="ALL = (ALL) ABCMDS,/sbin/mount,/db2/*/db2_software/adm/db2licm -l show detail"
 
 # Associative array of alternate files implementing the '#include sudoers.d/' functionality
 declare -A alt_sudoers

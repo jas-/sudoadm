@@ -549,6 +549,22 @@ str_to_lower()
   echo "${1}"|tr '[:upper:]' '[:lower:]'
 }
 
+ltrim()
+{
+  awk -v s="${1}" '{sub(/^[ \t\r\n]+/, "", s); return s}'
+}
+
+
+rtrim()
+{
+  awk -v s="${1}" '{sub(/[ \t\r\n]+$/, "", s); return s}'
+}
+
+
+trim()
+{
+  awk -v s="${1}" '{rtrim(ltrim(s))}'
+}
 
 # String replace
 #  1 - File
@@ -824,8 +840,8 @@ make_change_add()
   # Convert ${objs} into ${objs[@]} (an array)
   if [ "${objs}" != "" ]; then
     IFS=',' read -a objs <<< "${objs}"
-    info+=("INFO: Total existing #${#objs[@]} (${objs[@]})\n")
   fi
+  info+=("INFO: Total existing #${#objs[@]} (${objs[@]})\n")
   
   # Build ${prefix} to handle accurate replacement
   if [ ${add} -eq 1 ]; then
