@@ -554,20 +554,22 @@ str_to_lower()
 #  1 - String to apply filter to
 str_filter()
 {
-  space="$(xxd -pu <<< " ")"
-  asterik="$(xxd -pu <<< "*")"
+  local space="$(echo " "|od -A n -t x1|xargs|sed 's/ //')"
+  local comma="$(echo ","|od -A n -t x1|xargs|sed 's/ //')"
+  local asterik="$(echo "*"|od -A n -t x1|xargs|sed 's/ //')"
 
-  echo "${1}"|sed "s| |${space}|g"|sed "s|*|${asterik}|g"
+  echo "${1}"|sed "s|,|${comma}|g"|sed "s| |${space}|g"|sed "s|*|${asterik}|g"
 }
 
 # Remove filter
 #  1 - String to remove filter from
 str_rem_filter()
 {
-  space="$(xxd -pu <<< " ")"
-  asterik="$(xxd -pu <<< "*")"
+  local space="$(echo " "|od -A n -t x1|xargs|sed 's/ //')"
+  local comma="$(echo ","|od -A n -t x1|xargs|sed 's/ //')"
+  local asterik="$(echo "*"|od -A n -t x1|xargs|sed 's/ //')"
 
-  echo "${1}"|sed "s|${space}| |g"|sed "s|${asterik}|*|g"
+  echo "${1}"|sed "s|${comma}|,|g"|sed "s|${space}| |g"|sed "s|${asterik}|*|g"
 }
 
 
@@ -818,8 +820,8 @@ make_change_add()
 
   info+=("INFO: Parsed additions: ${parsed}\n")
 
-  # Convert ${obj} into an array
-  IFS=',' read -a obj <<< "${obj}"
+  # Convert ${obj} into an array (Create placeholder for commas)
+  IFS=',' read -a obj <<< "$(echo "${obj}"|sed "s|,|$(xxd -pu <<< ","),|g")"
   info+=("INFO: Total additions #${#obj[@]} (${obj[@]})\n")
 
   # Create ${search} from ${needle} (flattens multiline results)
@@ -872,7 +874,7 @@ make_change_add()
     info+=("INFO: Intersection : ${objs[@]} => ${obj[@]}\n")
 
     # Perform intersection of ${objs[@]} from ${obj[@]}
-    local fobjs=($(comm <(printf '%s\n' "${objs[@]}"|sort -u) <(printf '%s\n' "${obj[@]}"|sort -u)))
+    local fobjs=($(comm <(printf '%s\n' "${objs[@]}"|sort -u) <(printf '%s2c0a\n' "${obj[@]}"|sort -u)))
   else
 
     # Since ${#objs[@]} was empty use ${obj[@]} as ${res}
@@ -880,8 +882,6 @@ make_change_add()
   fi
 
   # Set the replacement value to ${replacement}
-  #replacement="${prefix} $(echo "${fobjs[@]}"|tr '+' '*'|tr ' ' ','|tr '@' ' ')"
-  #replacement="${prefix} $(echo "${fobjs[@]}"|tr '+' '*'|tr '@' ' ')"
   replacement="${prefix} $(str_rem_filter "$(echo "${fobjs[@]}"|tr '@' ' ')")"
 
   info+=("INFO: Replacement: ${replacement}\n")
