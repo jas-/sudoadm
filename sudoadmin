@@ -19,7 +19,7 @@ host=
 command=
 default=
 permissions=
-value="$(echo "${!#}"|tr ' ' '@')" # Assign the last element in the @ARG list to ${value}
+value="${!#}" # Assign the last element in the @ARG list to ${value}
 
 # Additional options vars
 validate=0
@@ -549,22 +549,27 @@ str_to_lower()
   echo "${1}"|tr '[:upper:]' '[:lower:]'
 }
 
-ltrim()
+
+# Apply filter
+#  1 - String to apply filter to
+str_filter()
 {
-  awk -v s="${1}" '{sub(/^[ \t\r\n]+/, "", s); return s}'
+  space="$(xxd -pu <<< " ")"
+  asterik="$(xxd -pu <<< "*")"
+
+  echo "${1}"|sed "s| |${space}|g"|sed "s|*|${asterik}|g"
 }
 
-
-rtrim()
+# Remove filter
+#  1 - String to remove filter from
+str_rem_filter()
 {
-  awk -v s="${1}" '{sub(/[ \t\r\n]+$/, "", s); return s}'
+  space="$(xxd -pu <<< " ")"
+  asterik="$(xxd -pu <<< "*")"
+
+  echo "${1}"|sed "s|${space}| |g"|sed "s|${asterik}|*|g"
 }
 
-
-trim()
-{
-  awk -v s="${1}" '{rtrim(ltrim(s))}'
-}
 
 # String replace
 #  1 - File
@@ -651,7 +656,11 @@ parse_alias() {
 parse_perms() {
   local haystack="${1}"
 
-  echo "${haystack}"|awk '{
+  echo "${haystack}"|awk '
+    function ltrim(s) { sub(/^[ \t\r\n]+/, "", s); return s }
+    function rtrim(s) { sub(/[ \t\r\n]+$/, "", s); return s }
+    function trim(s)  { return rtrim(ltrim(s)); }
+  {
     stanza="perm=" $1;
 
     # Initial match
@@ -698,16 +707,23 @@ parse_perms() {
       }
     }
 
+    # Fix for malformed cmds
+    if (obj[4] ~ /\(.*\).*/) {
+      total=split(obj[4], tmp, ")");
+      if (tmp[total])
+        obj[4]=tmp[total];
+    }
+
     # Fix for only permissions as arg
     if (!obj[4] && obj[1]) {
       obj[4]=obj[1];
       obj[1]="";
     }
 
-    server="server=" obj[1];
-    ug="ug=" obj[2];
-    tag="tag=" obj[3];
-    cmds="cmds=" obj[4];
+    server="server=" trim(obj[1]);
+    ug="ug=" trim(obj[2]);
+    tag="tag=" trim(obj[3]);
+    cmds="cmds=" trim(obj[4]);
 
     print stanza " " server " " ug " " tag " " cmds
 
@@ -762,7 +778,6 @@ return_prefix() {
 ###############################################
 
 # Make additions/replacements
-# sed -ne '/^Cmnd_Alias.*CAAGENTCMDS=.*/,/[a-z]$/p' /etc/sudoers
 make_change_add()
 {
   local haystack="${1}"
@@ -792,13 +807,13 @@ make_change_add()
   # Account for '*' when ${value} contains wildcards
   value="$(echo "${value}"|tr '*' '+')"
 
-  # Parse ${value} into chunks (effing ugly bits)
+  # Parse ${value} into ${parsed} & obtain ${obj}
   if [ "${permissions}" == "" ]; then
     local parsed="$(parse_alias "${key} ${value}")"
     local obj="$(echo "${parsed}"|awk '{split($3, obj, "=");print obj[2]}')"
   else
     local parsed="$(parse_perms "${key} ${value}")"
-    local obj="$(echo "${parsed}"|awk '{split($5, obj, "=");print obj[2]}')"
+    local obj="$(echo "${parsed}"|awk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')"
   fi
 
   info+=("INFO: Parsed additions: ${parsed}\n")
@@ -824,7 +839,7 @@ make_change_add()
       parsed_stanza="$(parse_perms "${key}")"
     else
       parsed_stanza="$(parse_perms "${search}")"
-      local objs="$(echo "${parsed_stanza}"|awk '{split($5, obj, "=");print obj[2]}')"
+      local objs="$(str_filter "$(echo "${parsed_stanza}"|awk '{if (match($0, /cmds=(.*)$/, obj)){print obj[1]}}')")"
     fi
   else
     if [ ${add} -eq 1 ]; then
@@ -841,6 +856,7 @@ make_change_add()
   if [ "${objs}" != "" ]; then
     IFS=',' read -a objs <<< "${objs}"
   fi
+
   info+=("INFO: Total existing #${#objs[@]} (${objs[@]})\n")
   
   # Build ${prefix} to handle accurate replacement
@@ -864,7 +880,9 @@ make_change_add()
   fi
 
   # Set the replacement value to ${replacement}
-  replacement="${prefix} $(echo "${fobjs[@]}"|tr '+' '*'|tr ' ' ','|tr '@' ' ')"
+  #replacement="${prefix} $(echo "${fobjs[@]}"|tr '+' '*'|tr ' ' ','|tr '@' ' ')"
+  #replacement="${prefix} $(echo "${fobjs[@]}"|tr '+' '*'|tr '@' ' ')"
+  replacement="${prefix} $(str_rem_filter "$(echo "${fobjs[@]}"|tr '@' ' ')")"
 
   info+=("INFO: Replacement: ${replacement}\n")
 
@@ -872,11 +890,13 @@ make_change_add()
   if [ ${add} -eq 0 ]; then
 
     # Edit existing ${mode} for ${key_orig}
-    do_sed "${original}" "${haystack}" "${search}" "$(echo "${replacement}"|tr '@' ' ')"
+    #do_sed "${original}" "${haystack}" "${search}" "$(echo "${replacement}"|tr '@' ' ')"
+    do_sed "${original}" "${haystack}" "${search}" "${replacement}"
   else
 
     # Add ${mode} ${key_orig} values
-    do_add "${haystack}" "$(echo "${replacement}"|tr '@' ' ')"
+    #do_add "${haystack}" "$(echo "${replacement}"|tr '@' ' ')"
+    do_add "${haystack}" "${replacement}"
   fi
 }
 
@@ -991,9 +1011,9 @@ make_change()
 
   if [ "${validate}" -eq 0 ]; then
     return 0
-  else
-    errors+=("ERROR: ${tmp_file} did not pass validation\n")
-    return 1
+  #else
+  #  errors+=("ERROR: ${tmp_file} did not pass validation\n")
+  #  return 1
   fi
 }
 

@@ -69,14 +69,17 @@ if [ ${#permissions[@]} -gt 0 ]; then
 
     # Now add ${item} the alias ${data}
     bogus=$(${sudoadm} -Vf ${name} -aP ${data} "${item}")
-echo "${bogus}"
+    echo "${bogus}"
     if [ $? -ne 0 ]; then
+      echo "${bogus}"
       echo "Failed to add '${item}' to '${data}' new Permissions" && exit 1
     fi
 
     # Use ${item} to create ${haystack} from ${name}
     haystack=$(grep "${item}" ${name})
     if [ "${haystack}" == "" ]; then
+      echo "${bogus}"
+      echo "Searching '${name}' for '${item}'"
       echo "Failed addition of '${item}' in '${data}' Permissions" && exit 1
     fi
 
