@@ -647,7 +647,7 @@ parse_alias() {
 
   local mode=$(echo "${haystack}"|awk '{print $1}')
   local name=$(echo "${haystack}"|awk '{print $2}')
-  local objects=$(echo "${haystack}"|awk '{print $3}')
+  local objects=$(echo "${haystack}"|awk -v pattern="/.*${name}(.*)$/" '{if (match($0, pattern, obj)){print obj[1]}}')
 
   echo "mode=${mode} name=${name} objects=${objects}"
 }
