@@ -557,8 +557,9 @@ str_filter()
   local space="$(echo " "|od -A n -t x1|xargs|sed 's/ //')"
   local comma="$(echo ","|od -A n -t x1|xargs|sed 's/ //')"
   local asterik="$(echo "*"|od -A n -t x1|xargs|sed 's/ //')"
+  local at="$(echo "@"|od -A n -t x1|xargs|sed 's/ //')"
 
-  echo "${1}"|sed "s|,|${comma}|g"|sed "s| |${space}|g"|sed "s|*|${asterik}|g"
+  echo "${1}"|sed "s|@|${at}|g"|sed "s|,|${comma}|g"|sed "s| |${space}|g"|sed "s|*|${asterik}|g"
 }
 
 # Remove filter
@@ -568,8 +569,9 @@ str_rem_filter()
   local space="$(echo " "|od -A n -t x1|xargs|sed 's/ //')"
   local comma="$(echo ","|od -A n -t x1|xargs|sed 's/ //')"
   local asterik="$(echo "*"|od -A n -t x1|xargs|sed 's/ //')"
+  local at="$(echo "@"|od -A n -t x1|xargs|sed 's/ //')"
 
-  echo "${1}"|sed "s|${comma}|,|g"|sed "s|${space}| |g"|sed "s|${asterik}|*|g"
+  echo "${1}"|sed "s|${at}|@|g"|sed "s|${comma}|,|g"|sed "s|${space}| |g"|sed "s|${asterik}|*|g"
 }
 
 
@@ -598,6 +600,30 @@ str_replace()
   else
     echo "${str}" >> $file
   fi
+}
+
+
+# ltrim - Remove preceeding whitespace
+#  1 - String
+ltrim()
+{
+  echo "${1}"|awk '{sub(/^[ \t\r\n]+/, "", $0);print $0}'
+}
+
+
+# rtrim - Remove trailing whitespace
+#  1 - String
+rtrim()
+{
+  echo "${1}"|awk '{sub(/[ \t\r\n]+$/, "", $0);print $0}'
+}
+
+
+# rtrim - Remove preceeding & trailing whitespace
+#  1 - String
+trim()
+{
+  echo "$(ltrim "$(rtrim "${1}")")"
 }
 
 
@@ -647,9 +673,9 @@ parse_alias() {
 
   local mode=$(echo "${haystack}"|awk '{print $1}')
   local name=$(echo "${haystack}"|awk '{print $2}')
-  local objects=$(echo "${haystack}"|awk -v pattern="/.*${name}(.*)$/" '{if (match($0, pattern, obj)){print obj[1]}}')
+  local objects="$(str_filter "$(echo "${haystack}"|awk 'match($0, /.*=(.*)/, aliases){print aliases[1]}')")"
 
-  echo "mode=${mode} name=${name} objects=${objects}"
+  echo "mode=${mode} name=${name} objects=$(trim "${objects}")"
 }
 
 
@@ -811,11 +837,11 @@ make_change_add()
 
   # Parse ${value} into ${parsed} & obtain ${obj}
   if [ "${permissions}" == "" ]; then
-    local parsed="$(parse_alias "${key} ${value}")"
-    local obj="$(echo "${parsed}"|awk '{split($3, obj, "=");print obj[2]}')"
+    local parsed="$(parse_alias "${key} = ${value}")"
+    local obj="$(str_filter "$(echo "${parsed}"|awk '{split($3, obj, "=");print obj[2]}')")"
   else
     local parsed="$(parse_perms "${key} ${value}")"
-    local obj="$(echo "${parsed}"|awk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')"
+    local obj="$(str_filter "$(echo "${parsed}"|awk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')")"
   fi
 
   info+=("INFO: Parsed additions: ${parsed}\n")
@@ -882,7 +908,7 @@ make_change_add()
   fi
 
   # Set the replacement value to ${replacement}
-  replacement="${prefix} $(str_rem_filter "$(echo "${fobjs[@]}"|tr '@' ' ')")"
+  replacement="${prefix} $(str_rem_filter "$(echo "${fobjs[@]}"|sed 's/  +/ /g')")"
 
   info+=("INFO: Replacement: ${replacement}\n")
 
