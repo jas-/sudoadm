@@ -644,6 +644,22 @@ str_rem_filter_plus()
 }
 
 
+# Apply filter to equals
+#  1 - String to apply filter to
+str_filter_equals()
+{
+  echo "${1}"|sed "s|=|${equals}|g"
+}
+
+
+# Apply filter to equals
+#  1 - String to apply filter to
+str_rem_filter_equals()
+{
+  echo "${1}"|sed "s|${equals}|=|g"
+}
+
+
 # Apply filter
 #  1 - String to apply filter to
 str_filter()
@@ -656,6 +672,7 @@ str_filter()
   string="$(str_filter_asterik "${string}")"
   string="$(str_filter_at "${string}")"
   string="$(str_filter_plus "${string}")"
+  #string="$(str_filter_equals "${string}")"
 
   echo "${string}"
 }
@@ -672,6 +689,7 @@ str_rem_filter()
   string="$(str_rem_filter_asterik "${string}")"
   string="$(str_rem_filter_at "${string}")"
   string="$(str_rem_filter_plus "${string}")"
+  #string="$(str_rem_filter_equals "${string}")"
 
   echo "${string}"
 }
@@ -946,7 +964,7 @@ make_change_add()
   info+=("INFO: Parsed additions: $(str_rem_filter "${parsed}")\n")
 
   # Convert ${obj} into an array (Create placeholder for commas)
-  IFS=',' read -a obj <<< "$(echo "${obj}"|sed "s|$(xxd -pu <<< ",")|$(xxd -pu <<< ","),|g")"
+  IFS=',' read -a obj <<< "$(echo "${obj}"|sed "s|${comma}|${comma},|g")"
   info+=("INFO: Total additions #${#obj[@]} (${obj[@]})\n")
 
   # Create ${search} from ${needle} (flattens multiline results)
@@ -1056,7 +1074,7 @@ make_change_remove()
 
   # Nothing found in ${search} so exit
   if [ "${search}" == "" ]; then
-    info+=("INFO: No pattern found for ${needle}\n")
+    errors+=("INFO: No pattern found for ${needle}\n")
     return 1
   fi
 
@@ -1083,16 +1101,23 @@ make_change_remove()
 
   info+=("INFO: Using ${search}\n")
   info+=("INFO: Parsed as ${parsed_stanza}\n")
+  info+=("INFO: Total existing #${#objects[@]} (${objects[@]})\n")
 
   # if ${key} & ${value} present remove ${value} from ${key}
   if [[ "${key}" != "" ]] && [[ ${#obj[@]} -gt 0 ]] && [[ "${key_orig}" != "${value}" ]]; then
 
     # Convert ${objects} into an array
-    IFS=',' read -a objs <<< "${objects}"
+    IFS=',' read -a objs <<< "$(echo "${obj}"|sed "s|${comma}|${comma},|g")"
     info+=("INFO: Total removals #${#obj[@]} (${obj[@]})\n")
 
     # Perform intersection of ${objs[@]} from ${obj[@]}
     local res=($(comm -23 <(printf '%s\n' "${objs[@]}"|sort -u) <(printf '%s\n' "${obj[@]}"|sort -u)))
+
+    # Ensure ${#res[@]} -gt 0
+    if [ ! ${#res[@]} -gt 0 ]; then
+      errors+=("ERROR: 0 objects found after intersection\n")
+      return 1
+    fi
 
     # Create the appropriate ${replacement} string
     replace="$(str_rem_multi_spaces "$(str_rem_filter "${replacement} ${res[@]}")")"

@@ -47,6 +47,7 @@ if [ ${#cmnd_aliases[@]} -gt 0 ]; then
 
     # Add an alias so we can remove it
     bogus=$(${sudoadm} -Vf ${name} -aC ${data} "${cmnd_aliases[${data}]}")
+    echo "${bogus}"
     if [ $? -ne 0 ]; then
       echo "Failed addition of new '${data}' Cmnd_Alias" && exit 1
     fi
