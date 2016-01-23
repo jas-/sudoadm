@@ -32,6 +32,13 @@ verbose=0
 info=()
 errors=()
 
+# Hexidecimal values for special characters
+comma="$(echo ","|od -A n -t x1|xargs|sed 's/ //')"
+space="$(echo " "|od -A n -t x1|xargs|sed 's/ //')"
+asterik="$(echo "*"|od -A n -t x1|xargs|sed 's/ //')"
+at="$(echo "@"|od -A n -t x1|xargs|sed 's/ //')"
+plus="$(echo "+"|od -A n -t x1|xargs|sed 's/ //')"
+
 # Setup a path for binary tools (just in case)
 PATH=$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
 
@@ -550,28 +557,123 @@ str_to_lower()
 }
 
 
+# Removes multiple spaces from string
+#  1 - String
+str_rem_multi_spaces()
+{
+  echo "${1}"|sed 's/  \+/\ /g'
+}
+
+
+# Apply filter to commas
+#  1 - String to apply filter to
+str_filter_comma()
+{
+  echo "${1}"|sed "s|,|${comma}|g"
+}
+
+
+# Apply filter to commas
+#  1 - String to apply filter to
+str_rem_filter_comma()
+{
+  echo "${1}"|sed "s|${comma}|,|g"
+}
+
+
+# Apply filter to spaces
+#  1 - String to apply filter to
+str_filter_spaces()
+{
+  echo "${1}"|sed "s| |${space}|g"
+}
+
+
+# Apply filter to spaces
+#  1 - String to apply filter to
+str_rem_filter_spaces()
+{
+  echo "${1}"|sed "s|${space}| |g"
+}
+
+
+# Apply filter to asteriks
+#  1 - String to apply filter to
+str_filter_asterik()
+{
+  echo "${1}"|sed "s|*|${asterik}|g"
+}
+
+
+# Apply filter to asteriks
+#  1 - String to apply filter to
+str_rem_filter_asterik()
+{
+  echo "${1}"|sed "s|${asterik}|*|g"
+}
+
+
+# Apply filter to ats
+#  1 - String to apply filter to
+str_filter_at()
+{
+  echo "${1}"|sed "s|@|${at}|g"
+}
+
+
+# Apply filter to ats
+#  1 - String to apply filter to
+str_rem_filter_at()
+{
+  echo "${1}"|sed "s|${at}|@|g"
+}
+
+# Apply filter to plus
+#  1 - String to apply filter to
+str_filter_plus()
+{
+  echo "${1}"|sed "s|+|${plus}|g"
+}
+
+
+# Apply filter to plus
+#  1 - String to apply filter to
+str_rem_filter_plus()
+{
+  echo "${1}"|sed "s|${plus}|+|g"
+}
+
+
 # Apply filter
 #  1 - String to apply filter to
 str_filter()
 {
-  local space="$(echo " "|od -A n -t x1|xargs|sed 's/ //')"
-  local comma="$(echo ","|od -A n -t x1|xargs|sed 's/ //')"
-  local asterik="$(echo "*"|od -A n -t x1|xargs|sed 's/ //')"
-  local at="$(echo "@"|od -A n -t x1|xargs|sed 's/ //')"
+  local string="${1}"
 
-  echo "${1}"|sed "s|@|${at}|g"|sed "s|,|${comma}|g"|sed "s| |${space}|g"|sed "s|*|${asterik}|g"
+  string="$(str_rem_multi_spaces "${string}")"
+  string="$(str_filter_spaces "${string}")"
+  string="$(str_filter_comma "${string}")"
+  string="$(str_filter_asterik "${string}")"
+  string="$(str_filter_at "${string}")"
+  string="$(str_filter_plus "${string}")"
+
+  echo "${string}"
 }
 
-# Remove filter
-#  1 - String to remove filter from
+
+# Apply filter
+#  1 - String to apply filter to
 str_rem_filter()
 {
-  local space="$(echo " "|od -A n -t x1|xargs|sed 's/ //')"
-  local comma="$(echo ","|od -A n -t x1|xargs|sed 's/ //')"
-  local asterik="$(echo "*"|od -A n -t x1|xargs|sed 's/ //')"
-  local at="$(echo "@"|od -A n -t x1|xargs|sed 's/ //')"
+  local string="${1}"
 
-  echo "${1}"|sed "s|${at}|@|g"|sed "s|${comma}|,|g"|sed "s|${space}| |g"|sed "s|${asterik}|*|g"
+  string="$(str_rem_filter_spaces "${string}")"
+  string="$(str_rem_filter_comma "${string}")"
+  string="$(str_rem_filter_asterik "${string}")"
+  string="$(str_rem_filter_at "${string}")"
+  string="$(str_rem_filter_plus "${string}")"
+
+  echo "${string}"
 }
 
 
@@ -832,9 +934,6 @@ make_change_add()
   # Apply fix for ${value}
   info+=("INFO: Supplied: ${key} ${value}\n")
 
-  # Account for '*' when ${value} contains wildcards
-  value="$(echo "${value}"|tr '*' '+')"
-
   # Parse ${value} into ${parsed} & obtain ${obj}
   if [ "${permissions}" == "" ]; then
     local parsed="$(parse_alias "${key} = ${value}")"
@@ -844,10 +943,10 @@ make_change_add()
     local obj="$(str_filter "$(echo "${parsed}"|awk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')")"
   fi
 
-  info+=("INFO: Parsed additions: ${parsed}\n")
+  info+=("INFO: Parsed additions: $(str_rem_filter "${parsed}")\n")
 
   # Convert ${obj} into an array (Create placeholder for commas)
-  IFS=',' read -a obj <<< "$(echo "${obj}"|sed "s|,|$(xxd -pu <<< ","),|g")"
+  IFS=',' read -a obj <<< "$(echo "${obj}"|sed "s|$(xxd -pu <<< ",")|$(xxd -pu <<< ","),|g")"
   info+=("INFO: Total additions #${#obj[@]} (${obj[@]})\n")
 
   # Create ${search} from ${needle} (flattens multiline results)
@@ -908,7 +1007,7 @@ make_change_add()
   fi
 
   # Set the replacement value to ${replacement}
-  replacement="${prefix} $(str_rem_filter "$(echo "${fobjs[@]}"|sed 's/  +/ /g')")"
+  replacement="$(str_rem_multi_spaces "$(str_rem_filter "${prefix} ${fobjs[@]}")")"
 
   info+=("INFO: Replacement: ${replacement}\n")
 
@@ -916,7 +1015,6 @@ make_change_add()
   if [ ${add} -eq 0 ]; then
 
     # Edit existing ${mode} for ${key_orig}
-    #do_sed "${original}" "${haystack}" "${search}" "$(echo "${replacement}"|tr '@' ' ')"
     do_sed "${original}" "${haystack}" "${search}" "${replacement}"
   else
 
@@ -997,7 +1095,7 @@ make_change_remove()
     local res=($(comm -23 <(printf '%s\n' "${objs[@]}"|sort -u) <(printf '%s\n' "${obj[@]}"|sort -u)))
 
     # Create the appropriate ${replacement} string
-    replace="${replacement} $(echo "${res[@]}"|tr ' ' ',')"
+    replace="$(str_rem_multi_spaces "$(str_rem_filter "${replacement} ${res[@]}")")"
     info+=("INFO: Replacement: ${replace}\n")
 
     # Make the change

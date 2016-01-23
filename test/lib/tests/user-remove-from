@@ -81,6 +81,7 @@ if [ ${#user_aliases[@]} -gt 0 ]; then
 
     # Now remove the alias ${data}
     bogus=$(${sudoadm} -Vf ${name} -rA ${data} "${item}")
+echo "${bogus}"
     if [ $? -ne 0 ]; then
       echo "Failed removal of new '${data}' User_Alias" && exit 1
     fi
