@@ -70,8 +70,6 @@ if [ ${#permissions[@]} -gt 0 ]; then
 
     # Now add ${item} the alias ${data}
     bogus=$(${sudoadm} -Vf ${name} -aP ${data} "${item}")
-echo "${bogus}"
-echo ""
     if [ $? -ne 0 ]; then
       echo "Failed to add '${item}' to '${data}' new Permissions"
       echo "${bogus}" && exit 1

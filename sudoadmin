@@ -661,6 +661,14 @@ str_rem_filter_equals()
 }
 
 
+# Apply sed escape sequences
+#  1 - String to apply filter to
+str_sed_escapes()
+{
+  echo "${1}"|sed -e 's/[\/&*]/\\&/g'
+}
+
+
 # Apply filter
 #  1 - String to apply filter to
 str_filter()
@@ -1024,31 +1032,35 @@ make_change_add()
   if [[ "${search}" != "${needle}" ]] && [[ ${#objs[@]} -gt 0 ]]; then
 
     info+=("INFO: Intersection : $(str_rem_filter ${objs[@]}) => ${obj[@]}\n")
-    #info+=("INFO: Intersection : ${objs[@]} => ${obj[@]}\n")
 
-    # Perform intersection of ${objs[@]} from ${obj[@]}
-    local fobjs=($(comm -3 <(printf '%s\n' "$(str_rem_filter ${objs[@]})"|tr ',' ' '|sort -u) <(printf '%s\n' "${obj[@]}"|sort -u)))
+    # Perform intersection of ${objs[@]} with ${obj[@]} (place hex value of ',')
+    local fobjs=($(comm -3 <(printf '%s\n' "${objs[@]}"|sort -u) <(printf '%s2c0a\n' "$(str_filter ${obj[@]})"|sort -u)))
   else
 
     # Since ${#objs[@]} was empty use ${obj[@]} as ${res}
     local fobjs="$(echo ${obj[@]})"
   fi
 
-  info+=("INFO: A: "$(str_rem_filter ${objs[@]}|tr ',' ' ')"\n")
-  info+=("INFO: B: ${obj[@]}\n")
-  info+=("INFO: C: ${fobjs[@]}\n")
+  # Ensure ${#fobjs[@]} -gt 0
+  if [ ! ${#fobjs[@]} -gt 0 ]; then
+    errors+=("${info[@]}")
+    errors+=("ERROR: 0 objects found after intersection\n")
+    return 1
+  fi
 
-  # Set the replacement value to ${replacement}
-  replacement="$(str_rem_multi_spaces "${prefix} ${fobjs[@]}")"
+  # Flatten ${fobjs[@]} into an array while removing filters
+  local objects="${fobjs[@]}"
 
-  info+=("INFO: X: ${prefix} ${fobjs[@]}\n")
+  # Set '${prefix} ${objects}' as ${replacement}
+  replacement="$(str_rem_multi_spaces "${prefix} $(str_rem_filter "${objects}")")"
+
   info+=("INFO: Replacement: ${replacement}\n")
 
   # Make the change
   if [ ${add} -eq 0 ]; then
 
     # Edit existing ${mode} for ${key_orig}
-    do_sed "${original}" "${haystack}" "${search}" "${replacement}"
+    do_sed "${original}" "${haystack}" "$(str_sed_escapes "${search}")" "${replacement}"
   else
 
     # Add ${mode} ${key_orig} values
@@ -1135,7 +1147,7 @@ make_change_remove()
     info+=("INFO: Replacement: ${replace}\n")
 
     # Make the change
-    do_sed "${original}" "${haystack}" "${search}" "${replace}"
+    do_sed "${original}" "${haystack}" "$(str_sed_escapes "${search}")" "${replace}"
   fi
 }
 
