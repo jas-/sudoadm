@@ -48,7 +48,8 @@ if [ ${#cmnd_aliases[@]} -gt 0 ]; then
     # Add an alias so we can remove it
     bogus=$(${sudoadm} -Vf ${name} -aC ${data} "${cmnd_aliases[${data}]}")
     if [ $? -ne 0 ]; then
-      echo "Failed addition of new '${data}' Cmnd_Alias" && exit 1
+      echo "Failed addition of new '${data}' Cmnd_Alias"
+      echo "${bogus}" && exit 1
     fi
 
     # Create a needle to search for
@@ -58,7 +59,8 @@ if [ ${#cmnd_aliases[@]} -gt 0 ]; then
     haystack=$(grep "${needle}" ${name})
 
     if [ "${haystack}" == "" ]; then
-      echo "Failed validation of new '${data}' Cmnd_Alias" && exit 1
+      echo "Failed validation of new '${data}' Cmnd_Alias"
+      echo "${bogus}" && exit 1
     fi
 
     # Sleep for .1 seconds to accomodate for race conditions
@@ -83,13 +85,15 @@ if [ ${#cmnd_aliases[@]} -gt 0 ]; then
     # Now remove the alias ${data}
     bogus=$(${sudoadm} -Vf ${name} -rC ${data} "${item}")
     if [ $? -ne 0 ]; then
-      echo "Failed removal of new '${data}' Cmnd_Alias" && exit 1
+      echo "Failed removal of new '${data}' Cmnd_Alias"
+      echo "${bogus}" && exit 1
     fi
 
     # Use ${item} to create ${haystack} from ${name}
     haystack=$(grep "${item}" ${name})
     if [ "${haystack}" != "" ]; then
-      echo "Failed validation for remvoval of '${item}' from the '${data}' Cmnd_Alias" && exit 1
+      echo "Failed validation for remvoval of '${item}' from the '${data}' Cmnd_Alias"
+      echo "${bogus}" && exit 1
     fi
 
     # Clean up our working file(s)

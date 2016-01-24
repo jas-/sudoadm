@@ -43,7 +43,8 @@ if [ ${#permissions[@]} -gt 0 ]; then
     # Suppress output but handle return code
     bogus=$(${sudoadm} -Vf ${name} -aP ${data} "${permissions[${data}]}")
     if [ $? -ne 0 ]; then
-      echo "Failed addition of new '${data}' Permissions" && exit 1
+      echo "Failed addition of new '${data}' Permissions"
+      echo "${bogus}" && exit 1
     fi
 
     # Create a needle to search for
@@ -52,7 +53,8 @@ if [ ${#permissions[@]} -gt 0 ]; then
     # Use ${needle} to create ${haystack} from ${name}
     haystack=$(grep "${needle}" ${name})
     if [ "${haystack}" == "" ]; then
-      echo "Failed validation of new '${data}' Permissions" && exit 1
+      echo "Failed validation of new '${data}' Permissions"
+      echo "${bogus}" && exit 1
     fi
 
     # Clean up our working file(s)

@@ -331,6 +331,7 @@ rstore_interactive()
 
     # Handle response
     if [ $? != 0 ] ; then
+      errors+=("${info[@]}")
       errors+=("${prog}: ${rst}")
       echo "${errors[@]}" && return 1
     fi
@@ -793,9 +794,16 @@ parse_alias() {
 
   local mode=$(echo "${haystack}"|awk '{print $1}')
   local name=$(echo "${haystack}"|awk '{print $2}')
-  local objects="$(str_filter "$(echo "${haystack}"|awk 'match($0, /.*=(.*)/, aliases){print aliases[1]}')")"
 
-  echo "mode=${mode} name=${name} objects=$(trim "${objects}")"
+  if [ "$(echo "${haystack}"|tr -d -c '='|awk '{print length}')" != "1" ]; then
+    local objects="$(echo "${haystack}"|awk 'match($0, /.*=(.*).*=.*/, aliases){print aliases[1]}')"
+  else
+    local objects="$(echo "${haystack}"|awk 'match($0, /.*=(.*)/, aliases){print aliases[1]}')"
+  fi
+
+  objects="$(str_filter "$(trim "${objects}")")"
+
+  echo "mode=${mode} name=${name} objects=${objects}"
 }
 
 
@@ -939,12 +947,14 @@ make_change_add()
 
   # If ${key} is empty exit
   if [ "${key}" == "" ]; then
+    errors+=("${info[@]}")
     errors+=("ERROR: Missing argument, empty key\n")
     return 1
   fi
 
   # If ${value} is empty exit
   if [ "${value}" == "" ]; then
+    errors+=("${info[@]}")
     errors+=("ERROR: Cannot create empty ${key}\n")
     return 1
   fi
@@ -1002,7 +1012,7 @@ make_change_add()
     IFS=',' read -a objs <<< "${objs}"
   fi
 
-  info+=("INFO: Total existing #${#objs[@]} (${objs[@]})\n")
+  info+=("INFO: Total existing #${#objs[@]} ($(str_rem_filter "${objs[@]}"))\n")
   
   # Build ${prefix} to handle accurate replacement
   if [ ${add} -eq 1 ]; then
@@ -1014,10 +1024,10 @@ make_change_add()
   # If ${#objs[@]} greater than 0 perform intersection from ${obj[@]} & ${search} doesn't equal ${needle}
   if [[ "${search}" != "${needle}" ]] && [[ ${#objs[@]} -gt 0 ]]; then
 
-    info+=("INFO: Intersection : ${objs[@]} => ${obj[@]}\n")
+    info+=("INFO: Intersection : $(str_rem_filter ${objs[@]}) => ${obj[@]}\n")
 
     # Perform intersection of ${objs[@]} from ${obj[@]}
-    local fobjs=($(comm <(printf '%s\n' "${objs[@]}"|sort -u) <(printf '%s2c0a\n' "${obj[@]}"|sort -u)))
+    local fobjs=($(comm <(printf '%s\n' "$(str_rem_filter_comma "${objs[@]}")"|sort -u) <(printf '%s\n' "${obj[@]}"|sort -u)))
   else
 
     # Since ${#objs[@]} was empty use ${obj[@]} as ${res}
@@ -1056,13 +1066,7 @@ make_change_remove()
   local needle="${3}"
   local key="${4}"
   local key_orig="${5}"
-  local value="${@:6}"
-
-  # Apply fix for ${value}
-  value="$(echo "${value}"|tr ' ' ',')"
-
-  # Account for '*' when ${value} contains wildcards
-  value="$(echo "${value}"|tr '*' '+')"
+  local value="$(trim "${@:6}")"
 
   # Split ${value} into an array
   if [ "${value}" != "" ]; then
@@ -1074,11 +1078,12 @@ make_change_remove()
 
   # Nothing found in ${search} so exit
   if [ "${search}" == "" ]; then
+    errors+=("${info[@]}")
     errors+=("INFO: No pattern found for ${needle}\n")
     return 1
   fi
 
-  # if ${key} present & ${value} empty erase ${search}
+  # if ${key} present & ${value} erase ${search}
   if [[ "${key}" != "" ]] && [[ "${key_orig}" == "${value}" ]]; then
     do_sed "${original}" "${haystack}" "^${search}"
   fi
@@ -1087,34 +1092,36 @@ make_change_remove()
   if [ "${permissions}" != "" ]; then
     parsed_stanza="$(parse_perms "${search}")"
 
-    # Obtain the allowed commands from ${parsed_stanza}
+    # Obtain the object list from ${parsed_stanza}
     local objects="$(echo "${parsed_stanza}"|awk '{split($5, obj, "=");print obj[2]}')"
   else
     parsed_stanza="$(parse_alias "${search}")"
 
-    # Obtain the members from ${parsed_stanza}
+    # Obtain the object list from ${parsed_stanza}
     local objects="$(echo "${parsed_stanza}"|awk '{split($3, obj, "=");print obj[2]}')"
   fi
 
   # Create the replacement string prefix
   local replacement="$(return_prefix "${parsed_stanza}")"
 
+  # Convert ${objects} into an array
+  IFS=',' read -a objs <<< "$(echo "${objects}"|sed "s|${comma}|${comma},|g")"
+
   info+=("INFO: Using ${search}\n")
   info+=("INFO: Parsed as ${parsed_stanza}\n")
-  info+=("INFO: Total existing #${#objects[@]} (${objects[@]})\n")
+  info+=("INFO: Total existing #${#objs[@]} (${objs[@]})\n")
 
   # if ${key} & ${value} present remove ${value} from ${key}
   if [[ "${key}" != "" ]] && [[ ${#obj[@]} -gt 0 ]] && [[ "${key_orig}" != "${value}" ]]; then
 
-    # Convert ${objects} into an array
-    IFS=',' read -a objs <<< "$(echo "${obj}"|sed "s|${comma}|${comma},|g")"
     info+=("INFO: Total removals #${#obj[@]} (${obj[@]})\n")
 
     # Perform intersection of ${objs[@]} from ${obj[@]}
-    local res=($(comm -23 <(printf '%s\n' "${objs[@]}"|sort -u) <(printf '%s\n' "${obj[@]}"|sort -u)))
+    local res=($(comm -23 <(printf '%s\n' "$(str_rem_filter_comma "${objs[@]}")"|sort -u) <(printf '%s\n' "${obj[@]}"|sort -u)))
 
     # Ensure ${#res[@]} -gt 0
     if [ ! ${#res[@]} -gt 0 ]; then
+      errors+=("${info[@]}")
       errors+=("ERROR: 0 objects found after intersection\n")
       return 1
     fi
@@ -1199,6 +1206,7 @@ verify_visudo()
 
   # Neither should this
   if [ ! -f "${visudo}" ]; then
+    errors+=("${info[@]}")
     errors+=("ERROR: visudo not installed")
     return 1
   fi
@@ -1260,12 +1268,14 @@ robot()
   # Get or create supplied sudoer file
   file=$(find_sudoer)
   if [ $? -ne 0 ]; then
+    errors+=("${info[@]}")
     errors+=("ERROR: Could not locate or create file\n")
     echo "${errors[@]}" && return 1
   fi
 
   # Make sure it is valid
   if [ ! -f "${file}" ]; then
+    errors+=("${info[@]}")
     errors+=("ERROR: Could not locate file (${file}${sudoer})\n")
     echo "${errors[@]}" && return 1
   fi
@@ -1276,6 +1286,7 @@ robot()
 
   # Test for presence of file
   if [ ! -f ${file} ]; then
+    errors+=("${info[@]}")
     errors+=("${prog}: File specified was not found\n")
     echo "${errors[@]}" && return 1
   fi
@@ -1366,6 +1377,7 @@ robot()
 
     # Verify file copied, (read-only DMZ filesystems)
     if [ $? -eq 1 ]; then
+      errors+=("${info[@]}")
       errors+=("ERROR: Could not restore ${file} from ${tmp_file}\n")
       echo "${errors[@]}" && return 1
     fi
