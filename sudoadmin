@@ -1010,10 +1010,9 @@ make_change_add()
   # Convert ${objs} into ${objs[@]} (an array)
   if [ "${objs}" != "" ]; then
     IFS=',' read -a objs <<< "${objs}"
+    info+=("INFO: Total existing #${#objs[@]} ($(str_rem_filter "${objs[@]}"))\n")
   fi
 
-  info+=("INFO: Total existing #${#objs[@]} ($(str_rem_filter "${objs[@]}"))\n")
-  
   # Build ${prefix} to handle accurate replacement
   if [ ${add} -eq 1 ]; then
     local prefix="$(return_prefix "${parsed}")"
@@ -1025,18 +1024,24 @@ make_change_add()
   if [[ "${search}" != "${needle}" ]] && [[ ${#objs[@]} -gt 0 ]]; then
 
     info+=("INFO: Intersection : $(str_rem_filter ${objs[@]}) => ${obj[@]}\n")
+    #info+=("INFO: Intersection : ${objs[@]} => ${obj[@]}\n")
 
     # Perform intersection of ${objs[@]} from ${obj[@]}
-    local fobjs=($(comm <(printf '%s\n' "$(str_rem_filter_comma "${objs[@]}")"|sort -u) <(printf '%s\n' "${obj[@]}"|sort -u)))
+    local fobjs=($(comm -3 <(printf '%s\n' "$(str_rem_filter ${objs[@]})"|tr ',' ' '|sort -u) <(printf '%s\n' "${obj[@]}"|sort -u)))
   else
 
     # Since ${#objs[@]} was empty use ${obj[@]} as ${res}
     local fobjs="$(echo ${obj[@]})"
   fi
 
-  # Set the replacement value to ${replacement}
-  replacement="$(str_rem_multi_spaces "$(str_rem_filter "${prefix} ${fobjs[@]}")")"
+  info+=("INFO: A: "$(str_rem_filter ${objs[@]}|tr ',' ' ')"\n")
+  info+=("INFO: B: ${obj[@]}\n")
+  info+=("INFO: C: ${fobjs[@]}\n")
 
+  # Set the replacement value to ${replacement}
+  replacement="$(str_rem_multi_spaces "${prefix} ${fobjs[@]}")"
+
+  info+=("INFO: X: ${prefix} ${fobjs[@]}\n")
   info+=("INFO: Replacement: ${replacement}\n")
 
   # Make the change
@@ -1047,7 +1052,6 @@ make_change_add()
   else
 
     # Add ${mode} ${key_orig} values
-    #do_add "${haystack}" "$(echo "${replacement}"|tr '@' ' ')"
     do_add "${haystack}" "${replacement}"
   fi
 }
