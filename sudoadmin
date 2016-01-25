@@ -1102,7 +1102,9 @@ make_change_remove()
 
   # if ${key} present & ${value} erase ${search}
   if [[ "${key}" != "" ]] && [[ "${key_orig}" == "${value}" ]]; then
-    do_sed "${original}" "${haystack}" "^${search}"
+    info+=("INFO: Removing '${search}'\n")
+    do_sed "${original}" "${haystack}" "^$(str_sed_escapes "${search}")"
+    return 0
   fi
 
   # Parse ${search} into chunks to create ${replacement} prefix & ${objects[@]} for comparison
