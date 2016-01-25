@@ -63,17 +63,14 @@ if [ ${#object[@]} -gt 0 ]; then
     account="$(echo "${parsed}"|awk '{split($2, obj, "=");print obj[2]}')"
     objects="$(echo "${parsed}"|awk '{split($3, obj, "=");print obj[2]}')"
 
-    # Create safe ${needle} from ${object[${data}]} using str_sed_escapes()
-    needle="$(${sudoadm} -t "str_sed_escapes \"${parsed}\"")"
+    # Catch ${stanza} from ${parsed} as ${val_stanza}
+    val_stanza="$(echo "${parsed}"|sed "s|.*\(${stanza}\).*|\1|g")"
 
-    # Catch ${stanza} from ${needle} as ${val_stanza}
-    val_stanza="$(echo "${needle}"|sed "s|^\(${stanza}\).*|\1|g")"
+    # Catch ${account} from ${parsed} as ${val_account}
+    val_account="$(echo "${parsed}"|sed "s|.*\(${account}\).*|\1|g")"
 
-    # Catch ${account} from ${needle} as ${val_account}
-    val_account="$(echo "${needle}"|sed "s|^\(${account}\).*|\1|g")"
-
-    # Catch ${objects} from ${needle} as ${val_objects}
-    val_objects="$(echo "${needle}"|sed "s|^\(${objects}\).*|\1|g")"
+    # Catch ${objects} from ${parsed} as ${val_objects}
+    val_objects="$(echo "${parsed}"|sed "s|.*\(${objects}\).*|\1|g")"
 
     # Validate components 
     if [[ "${stanza}" != "${val_stanza}" ]] || [[ "${account}" != "${val_account}" ]] || [[ "${objects}" != "${val_objects}" ]]; then
