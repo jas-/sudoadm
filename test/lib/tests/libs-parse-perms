@@ -31,7 +31,7 @@ if [ ${#permissions[@]} -gt 0 ]; then
   # Begin iteration of ${permissions[@]}
   for data in ${!permissions[@]}; do
 
-    # Load ${sudoadm} as set of libraries -t option
+    # Run ${sudoadm} with -t option to use eval of functional test
     parsed="$(${sudoadm} -t "parse_perms \"${data} ${permissions[${data}]}\"")"
     if [ $? -ne 0 ]; then
       echo "${prog}: An error occured loading '${sudoadm}' as set of libraries"

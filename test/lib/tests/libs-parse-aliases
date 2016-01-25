@@ -25,34 +25,63 @@ if [ ! -f "${sudoadm}" ]; then
   sudoadm=$(find / -type f -name sudoadmin|sort -u|head -1)
 fi
 
-# Ensure ${permissions[@]} is > 0
-if [ ${#permissions[@]} -gt 0 ]; then
+# Combine ${cmnd_aliases[@]}, ${host_aliases[@]} & ${user_aliases[@]} into ${object[@]}
+for cmnd in ${!cmnd_aliases[@]}; do
+  object+=("Cmnd_Alias ${cmnd} = ${cmnd_aliases[${cmnd}]}")
+done
 
-  # Begin iteration of ${permissions[@]}
-  for data in ${!permissions[@]}; do
+for host in ${!host_aliases[@]}; do
+  object+=("Host_Alias ${host} = ${host_aliases[${host}]}")
+done
 
-    # Load ${sudoadm} as set of libraries -t option
-    parsed="$(${sudoadm} -t "parse_perms \"${data} ${permissions[${data}]}\"")"
+for user in ${!user_aliases[@]}; do
+  object+=("User_Alias ${user} = ${user_aliases[${user}]}")
+done
+
+# Ensure ${object} is > 0
+if [ ${#object[@]} -gt 0 ]; then
+
+  # Begin iteration of ${object[@]}
+  for data in "${object[@]}"; do
+
+    # Reset ${parsed} to ''
+    parsed=
+
+    # Run ${sudoadm} with -t option to use eval of functional test
+    parsed="$(${sudoadm} -t "parse_alias \"${data}\"")"
     if [ $? -ne 0 ]; then
       echo "${prog}: An error occured loading '${sudoadm}' as set of libraries"
       exit 1
     fi
 
+    # Remove filtering on ${parsed}
+    parsed="$(${sudoadm} -t "str_rem_filter_comma \"${parsed}\"")"
+    parsed="$(${sudoadm} -t "str_rem_filter_spaces \"${parsed}\"")"
+
     # Ensure parsing succeeded (only validates those field requried for a valid stanza)
     stanza="$(echo "${parsed}"|awk '{split($1, obj, "=");print obj[2]}')"
-    server="$(echo "${parsed}"|awk '{split($2, obj, "=");print obj[2]}')"
-    objects="$(echo "${parsed}"|awk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')"
+    account="$(echo "${parsed}"|awk '{split($2, obj, "=");print obj[2]}')"
+    objects="$(echo "${parsed}"|awk '{split($3, obj, "=");print obj[2]}')"
 
-    # Create safe regex from ${permissions[${data}]} using str_sed_escapes()
-    needle="$(${sudoadm} -t "str_sed_escapes \"${permissions[${data}]}\"")"
+    # Create safe ${needle} from ${object[${data}]} using str_sed_escapes()
+    needle="$(${sudoadm} -t "str_sed_escapes \"${parsed}\"")"
+
+    # Catch ${stanza} from ${needle} as ${val_stanza}
+    val_stanza="$(echo "${needle}"|sed "s|^\(${stanza}\).*|\1|g")"
+
+    # Catch ${account} from ${needle} as ${val_account}
+    val_account="$(echo "${needle}"|sed "s|^\(${account}\).*|\1|g")"
+
+    # Catch ${objects} from ${needle} as ${val_objects}
+    val_objects="$(echo "${needle}"|sed "s|^\(${objects}\).*|\1|g")"
 
     # Validate components 
-    if [[ "${stanza}" != "${data}" ]] || [[ "$(echo "${needle}"|sed "s|.*\(${server}\).*|\1|g")" == "" ]] || [[ "$(echo "${needle}"|sed "s|.*\(${objects}\).*|\1|g")" == "" ]]; then
-      echo "${prog}: Could not validate parsing of permissions stanza for '${data}'"
+    if [[ "${stanza}" != "${val_stanza}" ]] || [[ "${account}" != "${val_account}" ]] || [[ "${objects}" != "${val_objects}" ]]; then
+      echo "${prog}: Could not validate parsing of '${stanza}' stanza for '${account}'"
       echo "Parsed: ${parsed}"
-      [[ "${stanza}" != "${data}" ]] && "Stanza didn't match (${data})"
-      [[ "$(echo "${needle}"|sed "s|.*\(${server}\).*|\1|g")" == "" ]] && echo "Server didn't match (${server})"
-      [[ "$(echo "${needle}"|sed "s|.*\(${objects}\).*|\1|g")" == "" ]] && echo "Commands didn't match (${objects})"
+      [[ "${stanza}" != "${val_stanza}" ]] && echo "Stanza didn't match (${stanza} - ${val_stanza})"
+      [[ "${account}" != "${val_account}" ]] && echo "Account didn't match (${account})"
+      [[ "${objects}" != "${val_objects}" ]] && echo "Objects didn't match (${objects})"
       exit 1
     fi
 
