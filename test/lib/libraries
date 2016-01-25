@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# First arg should be our sudoadmin tool
+sudoadm=$([ "$1" != "" ] && echo "$1" || echo "../../sudoadmin")
+
+# Second arg should be our configuration file path
+config=$([ "$2" != "" ] && echo "$2" || echo "../assets/config")
+
+# Third arg should be our testing path
+cases=$([ "$3" != "" ] && echo "$3" || echo "tests/")
+
+# Get our name
+prog=$(basename $0)
+
+# Get our current working directory
+cwd=$(pwd)
+
+# Set ${cwd} within our $PATH
+PATH=$PATH:${cwd}
+
+# Retrieve the configuration file so we have some data to work with
+if [ ! -f ${config} ]; then
+  echo "${prog}: Could not locate configuration data for tests, exiting"
+  exit 1
+fi
+
+source ${config}
+
+# Check for a tests directory from ${cwd}
+if [ ! -d ${cases} ]; then
+  echo "${prog}: Could not locate ${cases} directory, exiting"
+  exit 1
+fi
+
+# Get a list of options test cases from ${cwd}/tests
+tests=$(find ${cases} -xdev -type f -name libs-*)
+
+# Make sure ${#tests[@]} is > 0
+if [ ${#tests[@]} -gt 0 ]; then
+
+  echo ""
+  echo "Performing all tests using available 'libraries'"
+
+  # Begin iterating ${tests[@]}
+  for test in ${tests[@]}; do
+
+    # Inform the tester about the test being performed
+    echo "  -> Executing '$(basename ${test})'"
+
+    # Run the test
+    output=$(/bin/bash ${test} "${sudoadm}" "${config}")
+
+    # Print out the results
+    echo "    -> ${output}"
+    echo ""
+  done
+fi
+

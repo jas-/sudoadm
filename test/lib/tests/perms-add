@@ -30,7 +30,7 @@ if [ ! -f "${file}" ]; then
   file=$(find $(dirname ${config}) -type f -name sudoers|sort -u|head -1)
 fi
 
-# Ensure ${user_aliases[@]} is > 0
+# Ensure ${permissions[@]} is > 0
 if [ ${#permissions[@]} -gt 0 ]; then
 
   # Begin iteration of ${permissions[@]}

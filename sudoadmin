@@ -27,6 +27,7 @@ restore=0
 interactive=0
 newfile=0
 verbose=0
+testing=
 
 # Informational & error array's
 info=()
@@ -38,6 +39,7 @@ space="$(echo " "|od -A n -t x1|xargs|sed 's/ //')"
 asterik="$(echo "*"|od -A n -t x1|xargs|sed 's/ //')"
 at="$(echo "@"|od -A n -t x1|xargs|sed 's/ //')"
 plus="$(echo "+"|od -A n -t x1|xargs|sed 's/ //')"
+equals="$(echo "="|od -A n -t x1|xargs|sed 's/ //')"
 
 # Setup a path for binary tools (just in case)
 PATH=$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
@@ -176,7 +178,7 @@ if [ $UID != 0 ]; then
 fi
 
 # Set variables based on args
-while getopts "hef:arA:H:C:D:P:vRinV" OPTION ; do
+while getopts "ht:ef:arA:H:C:D:P:vRinV" OPTION ; do
   case $OPTION in
     h) usage && exit 1 ;;
     e) examples && exit 1 ;;
@@ -193,6 +195,7 @@ while getopts "hef:arA:H:C:D:P:vRinV" OPTION ; do
     i) interactive=1 ;;
     n) newfile=1 ;;
     V) verbose=1 ;;
+    t) testing=$OPTARG ;;
     ?) usage && exit 1 ;;
   esac
 done
@@ -665,7 +668,7 @@ str_rem_filter_equals()
 #  1 - String to apply filter to
 str_sed_escapes()
 {
-  echo "${1}"|sed -e 's/[\/&*]/\\&/g'
+  echo "${1}"|sed -e 's/[\/&*+]/\\&/g'
 }
 
 
@@ -681,7 +684,7 @@ str_filter()
   string="$(str_filter_asterik "${string}")"
   string="$(str_filter_at "${string}")"
   string="$(str_filter_plus "${string}")"
-  #string="$(str_filter_equals "${string}")"
+  string="$(str_filter_equals "${string}")"
 
   echo "${string}"
 }
@@ -693,12 +696,12 @@ str_rem_filter()
 {
   local string="${1}"
 
-  string="$(str_rem_filter_spaces "${string}")"
-  string="$(str_rem_filter_comma "${string}")"
-  string="$(str_rem_filter_asterik "${string}")"
-  string="$(str_rem_filter_at "${string}")"
+  string="$(str_rem_filter_equals "${string}")"
   string="$(str_rem_filter_plus "${string}")"
-  #string="$(str_rem_filter_equals "${string}")"
+  string="$(str_rem_filter_at "${string}")"
+  string="$(str_rem_filter_asterik "${string}")"
+  string="$(str_rem_filter_comma "${string}")"
+  string="$(str_rem_filter_spaces "${string}")"
 
   echo "${string}"
 }
@@ -968,7 +971,7 @@ make_change_add()
   fi
 
   # Apply fix for ${value}
-  info+=("INFO: Supplied: ${key} ${value}\n")
+  info+=("INFO: Supplied: '${key} ${value}'\n")
 
   # Parse ${value} into ${parsed} & obtain ${obj}
   if [ "${permissions}" == "" ]; then
@@ -979,7 +982,7 @@ make_change_add()
     local obj="$(str_filter "$(echo "${parsed}"|awk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')")"
   fi
 
-  info+=("INFO: Parsed additions: $(str_rem_filter "${parsed}")\n")
+  info+=("INFO: Parsed additions: '$(str_rem_filter "${parsed}")'\n")
 
   # Convert ${obj} into an array (Create placeholder for commas)
   IFS=',' read -a obj <<< "$(echo "${obj}"|sed "s|${comma}|${comma},|g")"
@@ -988,7 +991,7 @@ make_change_add()
   # Create ${search} from ${needle} (flattens multiline results)
   local search="$(sed -ne "/${needle}/,/[a-zA-Z0-9]$/p" ${haystack}|tr '\n' ' ')"
 
-  info+=("INFO: Search results: ${search}\n")
+  info+=("INFO: Search results: '${search}'\n")
 
   # If ${search} is empty then set it to ${needle}
   if [ "${search}" == "" ]; then
@@ -1013,7 +1016,7 @@ make_change_add()
     fi
   fi
 
-  info+=("INFO: Parsed as ${parsed_stanza}\n")
+  info+=("INFO: Parsed as '${parsed_stanza}'\n")
 
   # Convert ${objs} into ${objs[@]} (an array)
   if [ "${objs}" != "" ]; then
@@ -1030,8 +1033,6 @@ make_change_add()
 
   # If ${#objs[@]} greater than 0 perform intersection from ${obj[@]} & ${search} doesn't equal ${needle}
   if [[ "${search}" != "${needle}" ]] && [[ ${#objs[@]} -gt 0 ]]; then
-
-    info+=("INFO: Intersection : $(str_rem_filter ${objs[@]}) => ${obj[@]}\n")
 
     # Perform intersection of ${objs[@]} with ${obj[@]} (place hex value of ',')
     local fobjs=($(comm -3 <(printf '%s\n' "${objs[@]}"|sort -u) <(printf '%s2c0a\n' "$(str_filter ${obj[@]})"|sort -u)))
@@ -1054,7 +1055,7 @@ make_change_add()
   # Set '${prefix} ${objects}' as ${replacement}
   replacement="$(str_rem_multi_spaces "${prefix} $(str_rem_filter "${objects}")")"
 
-  info+=("INFO: Replacement: ${replacement}\n")
+  info+=("INFO: Replacement: '${replacement}'\n")
 
   # Make the change
   if [ ${add} -eq 0 ]; then
@@ -1095,7 +1096,7 @@ make_change_remove()
   # Nothing found in ${search} so exit
   if [ "${search}" == "" ]; then
     errors+=("${info[@]}")
-    errors+=("INFO: No pattern found for ${needle}\n")
+    errors+=("INFO: No results found for '${needle}'\n")
     return 1
   fi
 
@@ -1118,14 +1119,15 @@ make_change_remove()
   fi
 
   # Create the replacement string prefix
-  local replacement="$(return_prefix "${parsed_stanza}")"
+  local prefix="$(return_prefix "${parsed_stanza}")"
 
   # Convert ${objects} into an array
   IFS=',' read -a objs <<< "$(echo "${objects}"|sed "s|${comma}|${comma},|g")"
+  #IFS=',' read -a objs <<< "${objects}"
 
-  info+=("INFO: Using ${search}\n")
-  info+=("INFO: Parsed as ${parsed_stanza}\n")
-  info+=("INFO: Total existing #${#objs[@]} (${objs[@]})\n")
+  info+=("INFO: Search results: '${search}'\n")
+  info+=("INFO: Parsed as '$(str_rem_filter "${parsed_stanza}")'\n")
+  info+=("INFO: Total existing #${#objs[@]} ($(str_rem_filter_comma $(str_rem_filter_spaces "${objs[@]}")))\n")
 
   # if ${key} & ${value} present remove ${value} from ${key}
   if [[ "${key}" != "" ]] && [[ ${#obj[@]} -gt 0 ]] && [[ "${key_orig}" != "${value}" ]]; then
@@ -1133,7 +1135,8 @@ make_change_remove()
     info+=("INFO: Total removals #${#obj[@]} (${obj[@]})\n")
 
     # Perform intersection of ${objs[@]} from ${obj[@]}
-    local res=($(comm -23 <(printf '%s\n' "$(str_rem_filter_comma "${objs[@]}")"|sort -u) <(printf '%s\n' "${obj[@]}"|sort -u)))
+    #local res=($(comm -23 <(printf '%s\n' "$(str_rem_filter "${objs[@]}")"|sort -u) <(printf '%s\n' "${obj[@]}"|sort -u)))
+    local res=($(comm -23 <(printf '%s\n' "${objs[@]}"|sort -u) <(printf '%s2c0a\n' "$(str_filter ${obj[@]})"|sort -u)))
 
     # Ensure ${#res[@]} -gt 0
     if [ ! ${#res[@]} -gt 0 ]; then
@@ -1142,8 +1145,14 @@ make_change_remove()
       return 1
     fi
 
+    # Flatten ${res[@]} into an array while removing filters
+    local objects="${res[@]}"
+
+    # Set '${prefix} ${objects}' as ${replace}
+    replace="$(str_rem_multi_spaces "${prefix} $(str_rem_filter "${objects}")")"
+
     # Create the appropriate ${replacement} string
-    replace="$(str_rem_multi_spaces "$(str_rem_filter "${replacement} ${res[@]}")")"
+    #replace="$(str_rem_multi_spaces "$(str_rem_filter "${replacement} ${res[@]}")")"
     info+=("INFO: Replacement: ${replace}\n")
 
     # Make the change
@@ -1414,6 +1423,12 @@ robot()
 }
 
 
-# Robot, do work
-main "robot"
+# If we ${testing} call requested function with provided args
+if [ "${testing}" != "" ]; then
+  # Run specified test
+  eval "${testing}"
+else
+  # Robot, do work
+  main "robot"
+fi
 

@@ -1,0 +1,62 @@
+#!/bin/bash
+
+# First arg should be our sudoadmin tool path
+sudoadm=$([ "$1" != "" ] && echo "$1" || echo "../../../sudoadmin")
+
+# First arg should be our configuration file path
+config=$([ "$2" != "" ] && echo "$2" || echo "../../assets/config")
+
+# Get our name
+prog=$(basename $0)
+
+# Get our current working directory
+cwd=$(pwd)
+
+# Retrieve the configuration file so we have some data to work with
+if [ ! -f ${config} ]; then
+  echo "${prog}: Could not locate configuration data for tests, exiting"
+  exit 1
+fi
+
+source ${config}
+
+# Check for 'sudoadmin'
+if [ ! -f "${sudoadm}" ]; then
+  sudoadm=$(find / -type f -name sudoadmin|sort -u|head -1)
+fi
+
+# Ensure ${permissions[@]} is > 0
+if [ ${#permissions[@]} -gt 0 ]; then
+
+  # Begin iteration of ${permissions[@]}
+  for data in ${!permissions[@]}; do
+
+    # Load ${sudoadm} as set of libraries -t option
+    parsed="$(${sudoadm} -t "parse_perms \"${data} ${permissions[${data}]}\"")"
+    if [ $? -ne 0 ]; then
+      echo "${prog}: An error occured loading '${sudoadm}' as set of libraries"
+      exit 1
+    fi
+
+    # Ensure parsing succeeded (only validates those field requried for a valid stanza)
+    stanza="$(echo "${parsed}"|awk '{split($1, obj, "=");print obj[2]}')"
+    server="$(echo "${parsed}"|awk '{split($2, obj, "=");print obj[2]}')"
+    objects="$(echo "${parsed}"|awk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')"
+
+    # Create safe regex from ${permissions[${data}]} using str_sed_escapes()
+    needle="$(${sudoadm} -t "str_sed_escapes \"${permissions[${data}]}\"")"
+
+    # Validate components 
+    if [[ "${stanza}" != "${data}" ]] || [[ "$(echo "${needle}"|sed "s|.*\(${server}\).*|\1|g")" == "" ]] || [[ "$(echo "${needle}"|sed "s|.*\(${objects}\).*|\1|g")" == "" ]]; then
+      echo "${prog}: Could not validate parsing of permissions stanza for '${data}'"
+      echo "Parsed: ${parsed}"
+      [[ "${stanza}" != "${data}" ]] && "Stanza didn't match (${data})"
+      [[ "$(echo "${needle}"|sed "s|.*\(${server}\).*|\1|g")" == "" ]] && echo "Server didn't match (${server})"
+      [[ "$(echo "${needle}"|sed "s|.*\(${objects}\).*|\1|g")" == "" ]] && echo "Commands didn't match (${objects})"
+      exit 1
+    fi
+
+  done
+fi
+
+echo "Passed"
