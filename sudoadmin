@@ -1151,7 +1151,8 @@ make_change_remove()
     local objects="${res[@]}"
 
     # Set '${prefix} ${objects}' as ${replace}
-    replace="$(str_rem_multi_spaces "${prefix} $(str_rem_filter "${objects}")")"
+    #replace="$(str_rem_multi_spaces "${prefix} $(str_rem_filter "${objects}")")"
+    replace="$(str_rem_multi_spaces "${prefix} ${objects}")"
 
     # Create the appropriate ${replacement} string
     #replace="$(str_rem_multi_spaces "$(str_rem_filter "${replacement} ${res[@]}")")"
