@@ -1018,11 +1018,16 @@ make_change_add()
 
   info+=("INFO: Parsed as '${parsed_stanza}'\n")
 
-  # Convert ${objs} into ${objs[@]} (an array)
-  if [ "${objs}" != "" ]; then
-    IFS=',' read -a objs <<< "${objs}"
-    info+=("INFO: Total existing #${#objs[@]} ($(str_rem_filter "${objs[@]}"))\n")
+  # Ensure ${add} == 0 & ${objs} isn't empty
+  if [[ "${objs}" == "" ]] && [[ ${add} -eq 0 ]]; then
+    errors+=("${info[@]}")
+    errors+=("ERRORS: An error occured extracted objects from existing stanza")
+    return 1
   fi
+
+  # Convert ${objs} into an array (${objs[@]})
+  IFS=',' read -a objs <<< "${objs}"
+  info+=("INFO: Total existing #${#objs[@]} ($(str_rem_filter "${objs[@]}"))\n")
 
   # Build ${prefix} to handle accurate replacement
   if [ ${add} -eq 1 ]; then
@@ -1112,7 +1117,7 @@ make_change_remove()
     parsed_stanza="$(parse_perms "${search}")"
 
     # Obtain the object list from ${parsed_stanza}
-    local objects="$(echo "${parsed_stanza}"|awk '{split($5, obj, "=");print obj[2]}')"
+    local objects="$(str_filter "$(echo "${parsed_stanza}"|awk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')")"
   else
     parsed_stanza="$(parse_alias "${search}")"
 
@@ -1124,12 +1129,20 @@ make_change_remove()
   local prefix="$(return_prefix "${parsed_stanza}")"
 
   # Convert ${objects} into an array
-  IFS=',' read -a objs <<< "$(echo "${objects}"|sed "s|${comma}|${comma},|g")"
+  if [ "${objects}" == "" ]; then
+    errors+=("${info[@]}")
+    errors+=("ERRORS: An error occured extracted objects from existing stanza")
+    return 1
+  fi
+
   #IFS=',' read -a objs <<< "${objects}"
+  IFS=',' read -a objs <<< "$(echo "${objects}"|sed "s|${comma}|${comma},|g")"
+  info+=("INFO: Total existing #${#objs[@]} (${objects})\n")
+  
 
   info+=("INFO: Search results: '${search}'\n")
   info+=("INFO: Parsed as '$(str_rem_filter "${parsed_stanza}")'\n")
-  info+=("INFO: Total existing #${#objs[@]} ($(str_rem_filter_comma $(str_rem_filter_spaces "${objs[@]}")))\n")
+  info+=("INFO: Total existing #${#objs[@]} ($(str_rem_filter "${objs[@]}"))\n")
 
   # if ${key} & ${value} present remove ${value} from ${key}
   if [[ "${key}" != "" ]] && [[ ${#obj[@]} -gt 0 ]] && [[ "${key_orig}" != "${value}" ]]; then
@@ -1137,7 +1150,6 @@ make_change_remove()
     info+=("INFO: Total removals #${#obj[@]} (${obj[@]})\n")
 
     # Perform intersection of ${objs[@]} from ${obj[@]}
-    #local res=($(comm -23 <(printf '%s\n' "$(str_rem_filter "${objs[@]}")"|sort -u) <(printf '%s\n' "${obj[@]}"|sort -u)))
     local res=($(comm -23 <(printf '%s\n' "${objs[@]}"|sort -u) <(printf '%s2c0a\n' "$(str_filter ${obj[@]})"|sort -u)))
 
     # Ensure ${#res[@]} -gt 0
@@ -1151,11 +1163,12 @@ make_change_remove()
     local objects="${res[@]}"
 
     # Set '${prefix} ${objects}' as ${replace}
-    #replace="$(str_rem_multi_spaces "${prefix} $(str_rem_filter "${objects}")")"
-    replace="$(str_rem_multi_spaces "${prefix} ${objects}")"
+    if [ "${permissions}" == "" ]; then
+      replace="$(str_rem_multi_spaces "${prefix} ${objects}")"
+    else
+      replace="$(str_rem_multi_spaces "$(str_rem_filter "${replacement} ${res[@]}")")"
+    fi
 
-    # Create the appropriate ${replacement} string
-    #replace="$(str_rem_multi_spaces "$(str_rem_filter "${replacement} ${res[@]}")")"
     info+=("INFO: Replacement: ${replace}\n")
 
     # Make the change
