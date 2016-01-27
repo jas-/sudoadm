@@ -674,6 +674,14 @@ str_sed_escapes()
 }
 
 
+# Apply wildcards for sed
+#  1 - String to apply filter to
+str_add_wildcards()
+{
+  echo "${1}"|sed -e 's/[ *+,]/.*/g'
+}
+
+
 # Apply filter
 #  1 - String to apply filter to
 str_filter()
