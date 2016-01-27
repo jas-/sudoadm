@@ -565,7 +565,8 @@ str_to_lower()
 #  1 - String
 str_rem_multi_spaces()
 {
-  echo "${1}"|sed 's/  \+/\ /g'
+  #echo "${1}"|sed 's/  \+/\ /g'
+  echo "${1}"|sed 's/  */\ /g'
 }
 
 
