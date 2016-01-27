@@ -39,9 +39,9 @@ if [ ${#permissions[@]} -gt 0 ]; then
     fi
 
     # Ensure parsing succeeded (only validates those field requried for a valid stanza)
-    stanza="$(echo "${parsed}"|awk '{split($1, obj, "=");print obj[2]}')"
-    server="$(echo "${parsed}"|awk '{split($2, obj, "=");print obj[2]}')"
-    objects="$(echo "${parsed}"|awk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')"
+    stanza="$(echo "${parsed}"|gawk '{split($1, obj, "=");print obj[2]}')"
+    server="$(echo "${parsed}"|gawk '{split($2, obj, "=");print obj[2]}')"
+    objects="$(echo "${parsed}"|gawk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')"
 
     # Create safe regex from ${permissions[${data}]} using str_sed_escapes()
     needle="$(${sudoadm} -t "str_sed_escapes \"${permissions[${data}]}\"")"

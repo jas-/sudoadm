@@ -35,7 +35,7 @@ fi
 parse_perms() {
   local haystack="${1}"
 
-  echo "${haystack}"|awk '
+  echo "${haystack}"|gawk '
     function ltrim(s) { sub(/^[ \t\r\n]+/, "", s); return s }
     function rtrim(s) { sub(/[ \t\r\n]+$/, "", s); return s }
     function trim(s)  { return rtrim(ltrim(s)); }
@@ -148,7 +148,7 @@ if [ ${#permissions[@]} -gt 0 ]; then
     tmp="$(parse_perms "${data} ${permissions[${data}]}")"
 
     # Split ${tmp} apart to get objects (commands component)
-    obj="$(echo "${tmp}"|awk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')"
+    obj="$(echo "${tmp}"|gawk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')"
 
     # Generate an array from ${obj}
     IFS=',' read -a items <<< "$(echo "${obj}")"

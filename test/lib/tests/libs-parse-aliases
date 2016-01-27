@@ -59,9 +59,9 @@ if [ ${#object[@]} -gt 0 ]; then
     parsed="$(${sudoadm} -t "str_rem_filter_spaces \"${parsed}\"")"
 
     # Ensure parsing succeeded (only validates those field requried for a valid stanza)
-    stanza="$(echo "${parsed}"|awk '{split($1, obj, "=");print obj[2]}')"
-    account="$(echo "${parsed}"|awk '{split($2, obj, "=");print obj[2]}')"
-    objects="$(echo "${parsed}"|awk '{split($3, obj, "=");print obj[2]}')"
+    stanza="$(echo "${parsed}"|gawk '{split($1, obj, "=");print obj[2]}')"
+    account="$(echo "${parsed}"|gawk '{split($2, obj, "=");print obj[2]}')"
+    objects="$(echo "${parsed}"|gawk '{split($3, obj, "=");print obj[2]}')"
 
     # Catch ${stanza} from ${parsed} as ${val_stanza}
     val_stanza="$(echo "${parsed}"|sed "s|.*\(${stanza}\).*|\1|g")"
