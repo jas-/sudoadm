@@ -1210,9 +1210,10 @@ make_change()
 
   if [ "${validate}" -eq 0 ]; then
     return 0
-  #else
-  #  errors+=("ERROR: ${tmp_file} did not pass validation\n")
-  #  return 1
+  else
+    errors+=("${info[@]}")
+    errors+=("ERROR: ${tmp_file} did not pass validation\n")
+    return 1
   fi
 }
 
