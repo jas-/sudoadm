@@ -1145,14 +1145,15 @@ make_change_remove()
     return 1
   fi
 
-  #IFS=',' read -a objs <<< "${objects}"
+  # Create ${objs[@]} from ${objects} while ensuring placehodlers for ',' characters exist
   IFS=',' read -a objs <<< "$(echo "${objects}"|sed "s|${comma}|${comma},|g")"
-  info+=("INFO: Total existing #${#objs[@]} (${objects})\n")
-  
+
+  # Clean up filtering on ${objects} for pretty printing
+  objects="$(str_rem_filter "${objects}")"
 
   info+=("INFO: Search results: '${search}'\n")
   info+=("INFO: Parsed as '$(str_rem_filter "${parsed_stanza}")'\n")
-  info+=("INFO: Total existing #${#objs[@]} ($(str_rem_filter "${objs[@]}"))\n")
+  info+=("INFO: Total existing #${#objs[@]} (${objects})\n")
 
   # if ${key} & ${value} present remove ${value} from ${key}
   if [[ "${key}" != "" ]] && [[ ${#obj[@]} -gt 0 ]] && [[ "${key_orig}" != "${value}" ]]; then
@@ -1172,6 +1173,9 @@ make_change_remove()
     # Flatten ${res[@]} into an array while removing filters
     local objects="${res[@]}"
 
+    # Remove filtering from ${objects}
+    objects="$(str_rem_filter "${objects}")"
+
     # Set '${prefix} ${objects}' as ${replace}
     if [ "${permissions}" == "" ]; then
       replace="$(str_rem_multi_spaces "${prefix} ${objects}")"
@@ -1179,7 +1183,7 @@ make_change_remove()
       replace="$(str_rem_multi_spaces "$(str_rem_filter "${replacement} ${res[@]}")")"
     fi
 
-    info+=("INFO: Replacement: ${replace}\n")
+    info+=("INFO: Replacement: '${replace}'\n")
 
     # Make the change
     do_sed "${original}" "${haystack}" "$(str_sed_escapes "${search}")" "${replace}"
