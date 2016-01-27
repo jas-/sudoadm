@@ -427,7 +427,7 @@ find_sudoer_path()
   local path="/etc/"
 
   if [ "${os}" == "sunos" ]; then
-    local ver=$(grep -i  "solaris" /etc/release|awk '{print $2}')
+    local ver=$(grep -i  "solaris" /etc/release|gawk '{print $2}')
     if [[ "${ver}" =~ ^11 ]]; then
       path="/usr/local/etc/"
     fi
@@ -441,7 +441,7 @@ find_sudoer_path()
 #  1 - Boolean to create file if it doesn't exist
 find_sudoer()
 {
-  # x=$(man sudoers 2> /dev/null|grep "List of who can run what"|awk '$1 ~ /^\//{print $1}')
+  # x=$(man sudoers 2> /dev/null|grep "List of who can run what"|gawk '$1 ~ /^\//{print $1}')
 
   local needle="${sudoer}"
 
@@ -739,7 +739,7 @@ str_replace()
 #  1 - String
 ltrim()
 {
-  echo "${1}"|awk '{sub(/^[ \t\r\n]+/, "", $0);print $0}'
+  echo "${1}"|gawk '{sub(/^[ \t\r\n]+/, "", $0);print $0}'
 }
 
 
@@ -747,7 +747,7 @@ ltrim()
 #  1 - String
 rtrim()
 {
-  echo "${1}"|awk '{sub(/[ \t\r\n]+$/, "", $0);print $0}'
+  echo "${1}"|gawk '{sub(/[ \t\r\n]+$/, "", $0);print $0}'
 }
 
 
@@ -803,13 +803,13 @@ pattern_permissions()
 parse_alias() {
   local haystack="${1}"
 
-  local mode=$(echo "${haystack}"|awk '{print $1}')
-  local name=$(echo "${haystack}"|awk '{print $2}')
+  local mode=$(echo "${haystack}"|gawk '{print $1}')
+  local name=$(echo "${haystack}"|gawk '{print $2}')
 
-  if [ "$(echo "${haystack}"|tr -d -c '='|awk '{print length}')" != "1" ]; then
-    local objects="$(echo "${haystack}"|awk 'match($0, /.*=(.*).*=.*/, aliases){print aliases[1]}')"
+  if [ "$(echo "${haystack}"|tr -d -c '='|gawk '{print length}')" != "1" ]; then
+    local objects="$(echo "${haystack}"|gawk 'match($0, /.*=(.*).*=.*/, aliases){print aliases[1]}')"
   else
-    local objects="$(echo "${haystack}"|awk 'match($0, /.*=(.*)/, aliases){print aliases[1]}')"
+    local objects="$(echo "${haystack}"|gawk 'match($0, /.*=(.*)/, aliases){print aliases[1]}')"
   fi
 
   objects="$(str_filter "$(trim "${objects}")")"
@@ -823,7 +823,7 @@ parse_alias() {
 parse_perms() {
   local haystack="${1}"
 
-  echo "${haystack}"|awk '
+  echo "${haystack}"|gawk '
     function ltrim(s) { sub(/^[ \t\r\n]+/, "", s); return s }
     function rtrim(s) { sub(/[ \t\r\n]+$/, "", s); return s }
     function trim(s)  { return rtrim(ltrim(s)); }
@@ -907,26 +907,26 @@ return_prefix() {
   if [ "${permissions}" == "" ]; then
 
     # Obtain the stanza from ${parsed}
-    local stnza="$(echo "${parsed}"|awk '{split($1, obj, "=");print obj[2]}')"
+    local stnza="$(echo "${parsed}"|gawk '{split($1, obj, "=");print obj[2]}')"
 
     # Obtain the Alias from ${parsed}
-    local account="$(echo "${parsed}"|awk '{split($2, obj, "=");print obj[2]}')"
+    local account="$(echo "${parsed}"|gawk '{split($2, obj, "=");print obj[2]}')"
 
     # Create the replacement string prefix
     local repl="${stnza} ${account} = "
   else
 
     # Obtain the stanza from ${parsed}
-    local stnza="$(echo "${parsed}"|awk '{split($1, obj, "=");print obj[2]}')"
+    local stnza="$(echo "${parsed}"|gawk '{split($1, obj, "=");print obj[2]}')"
 
     # Obtain the server value from ${parsed}
-    local srvr="$(echo "${parsed}"|awk '{split($2, obj, "=");print obj[2]}')"
+    local srvr="$(echo "${parsed}"|gawk '{split($2, obj, "=");print obj[2]}')"
 
     # Obtain the user/group from ${parsed}
-    local usrgrp="$(echo "${parsed}"|awk '{split($3, obj, "=");print obj[2]}')"
+    local usrgrp="$(echo "${parsed}"|gawk '{split($3, obj, "=");print obj[2]}')"
 
     # Obtain the tag_spec from ${parsed}
-    local tagspec="$(echo "${parsed}"|awk '{split($4, obj, "=");print obj[2]}')"
+    local tagspec="$(echo "${parsed}"|gawk '{split($4, obj, "=");print obj[2]}')"
 
     # Create the replacement string prefix
     if [ "${tagspec}" != "" ]; then
@@ -976,10 +976,10 @@ make_change_add()
   # Parse ${value} into ${parsed} & obtain ${obj}
   if [ "${permissions}" == "" ]; then
     local parsed="$(parse_alias "${key} = ${value}")"
-    local obj="$(str_filter "$(echo "${parsed}"|awk '{split($3, obj, "=");print obj[2]}')")"
+    local obj="$(str_filter "$(echo "${parsed}"|gawk '{split($3, obj, "=");print obj[2]}')")"
   else
     local parsed="$(parse_perms "${key} ${value}")"
-    local obj="$(str_filter "$(echo "${parsed}"|awk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')")"
+    local obj="$(str_filter "$(echo "${parsed}"|gawk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')")"
   fi
 
   info+=("INFO: Parsed additions: '$(str_rem_filter "${parsed}")'\n")
@@ -1005,14 +1005,14 @@ make_change_add()
       parsed_stanza="$(parse_perms "${key}")"
     else
       parsed_stanza="$(parse_perms "${search}")"
-      local objs="$(str_filter "$(echo "${parsed_stanza}"|awk '{if (match($0, /cmds=(.*)$/, obj)){print obj[1]}}')")"
+      local objs="$(str_filter "$(echo "${parsed_stanza}"|gawk '{if (match($0, /cmds=(.*)$/, obj)){print obj[1]}}')")"
     fi
   else
     if [ ${add} -eq 1 ]; then
       parsed_stanza="$(parse_alias "${key}")"
     else
       parsed_stanza="$(parse_alias "${search}")"
-      local objs="$(echo "${parsed_stanza}"|awk '{split($3, obj, "=");print obj[2]}')"
+      local objs="$(echo "${parsed_stanza}"|gawk '{split($3, obj, "=");print obj[2]}')"
     fi
   fi
 
@@ -1117,12 +1117,12 @@ make_change_remove()
     parsed_stanza="$(parse_perms "${search}")"
 
     # Obtain the object list from ${parsed_stanza}
-    local objects="$(str_filter "$(echo "${parsed_stanza}"|awk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')")"
+    local objects="$(str_filter "$(echo "${parsed_stanza}"|gawk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')")"
   else
     parsed_stanza="$(parse_alias "${search}")"
 
     # Obtain the object list from ${parsed_stanza}
-    local objects="$(echo "${parsed_stanza}"|awk '{split($3, obj, "=");print obj[2]}')"
+    local objects="$(echo "${parsed_stanza}"|gawk '{split($3, obj, "=");print obj[2]}')"
   fi
 
   # Create the replacement string prefix
