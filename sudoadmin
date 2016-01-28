@@ -1146,7 +1146,8 @@ make_change_remove()
   fi
 
   # Create ${objs[@]} from ${objects} while ensuring placehodlers for ',' characters exist
-  IFS=',' read -a objs <<< "$(echo "${objects}"|sed "s|${comma}|${comma},|g")"
+  #IFS=',' read -a objs <<< "$(echo "${objects}"|sed "s|${comma}|${comma},|g")"
+  IFS=',' read -a objs <<< "$(str_rem_filter_spaces "${objects}")"
 
   # Clean up filtering on ${objects} for pretty printing
   objects="$(str_rem_filter "${objects}")"
@@ -1161,6 +1162,7 @@ make_change_remove()
     info+=("INFO: Total removals #${#obj[@]} (${obj[@]})\n")
 
     # Perform intersection of ${objs[@]} from ${obj[@]}
+    #local res=($(comm -23 <(printf '%s\n' "${objs[@]}"|sort -u) <(printf '%s2c0a\n' "$(str_filter ${obj[@]})"|sort -u)))
     local res=($(comm -23 <(printf '%s\n' "${objs[@]}"|sort -u) <(printf '%s2c0a\n' "$(str_filter ${obj[@]})"|sort -u)))
 
     # Ensure ${#res[@]} -gt 0
