@@ -447,8 +447,8 @@ find_sudoer_path()
 #  1 - Boolean to create file if it doesn't exist
 find_sudoer()
 {
-  # x=$(man sudoers 2> /dev/null|grep "List of who can run what"|gawk '$1 ~ /^\//{print $1}')
 
+  # Create local copy of ${sudoer}
   local needle="${sudoer}"
 
   # Make ${sudoer} if it doesn't exist & ${newfile} is true
@@ -822,10 +822,14 @@ parse_alias() {
   local mode=$(echo "${haystack}"|gawk '{print $1}')
   local name=$(echo "${haystack}"|gawk '{print $2}')
 
-  if [ "$(echo "${haystack}"|tr -d -c '='|gawk '{print length}')" != "1" ]; then
-    local objects="$(echo "${haystack}"|gawk 'match($0, /.*=(.*).*=.*/, aliases){print aliases[1]}')"
+  local alias=$(echo "${haystack}" | tr -d -c '=' | gawk '{print length}')
+
+  if [ "${alias}" != "1" ]; then
+    local objects="$(echo "${haystack}" | \
+      gawk 'match($0, /.*=(.*).*=.*/, aliases){print aliases[1]}')"
   else
-    local objects="$(echo "${haystack}"|gawk 'match($0, /.*=(.*)/, aliases){print aliases[1]}')"
+    local objects="$(echo "${haystack}" | \
+      gawk 'match($0, /.*=(.*)/, aliases){print aliases[1]}')"
   fi
 
   objects="$(str_filter "$(trim "${objects}")")"
@@ -847,7 +851,8 @@ parse_perms() {
     stanza="perm=" $1;
 
     # Initial match
-    match($2, /^(\w+)=(\(.*\))?(N?O?PASSWD|N?O?EXEC|N?O?SETENV|N?O?LOG_INPUT|N?O?LOG_OUTPUT)?:?(.*)$/, obj);
+    match($2, /^(\w+)=(\(.*\))?(N?O?PASSWD|N?O?EXEC|N?O?SETENV| \
+      N?O?LOG_INPUT|N?O?LOG_OUTPUT)?:?(.*)$/, obj);
 
     # If server is missing try again
     if (!obj[1]) {
@@ -866,7 +871,8 @@ parse_perms() {
 
     # If tag is missing try again
     if (!obj[3]) {
-      match($0, /^.*(N?O?PASSWD|N?O?EXEC|N?O?SETENV|N?O?LOG_INPUT|N?O?LOG_OUTPUT).*$/, tmp);
+      match($0, /^.*(N?O?PASSWD|N?O?EXEC|N?O?SETENV| \
+        N?O?LOG_INPUT|N?O?LOG_OUTPUT).*$/, tmp);
       if (tmp[1]) {
         obj[3]=tmp[1];
       }
@@ -923,26 +929,32 @@ return_prefix() {
   if [ "${permissions}" == "" ]; then
 
     # Obtain the stanza from ${parsed}
-    local stnza="$(echo "${parsed}"|gawk '{split($1, obj, "=");print obj[2]}')"
+    local stnza="$(echo "${parsed}" | \
+      gawk '{split($1, obj, "=");print obj[2]}')"
 
     # Obtain the Alias from ${parsed}
-    local account="$(echo "${parsed}"|gawk '{split($2, obj, "=");print obj[2]}')"
+    local account="$(echo "${parsed}" | \
+      gawk '{split($2, obj, "=");print obj[2]}')"
 
     # Create the replacement string prefix
     local repl="${stnza} ${account} = "
   else
 
     # Obtain the stanza from ${parsed}
-    local stnza="$(echo "${parsed}"|gawk '{split($1, obj, "=");print obj[2]}')"
+    local stnza="$(echo "${parsed}" | \
+      gawk '{split($1, obj, "=");print obj[2]}')"
 
     # Obtain the server value from ${parsed}
-    local srvr="$(echo "${parsed}"|gawk '{split($2, obj, "=");print obj[2]}')"
+    local srvr="$(echo "${parsed}" | \
+      gawk '{split($2, obj, "=");print obj[2]}')"
 
     # Obtain the user/group from ${parsed}
-    local usrgrp="$(echo "${parsed}"|gawk '{split($3, obj, "=");print obj[2]}')"
+    local usrgrp="$(echo "${parsed}" | \
+      gawk '{split($3, obj, "=");print obj[2]}')"
 
     # Obtain the tag_spec from ${parsed}
-    local tagspec="$(echo "${parsed}"|gawk '{split($4, obj, "=");print obj[2]}')"
+    local tagspec="$(echo "${parsed}" | \
+      gawk '{split($4, obj, "=");print obj[2]}')"
 
     # Create the replacement string prefix
     if [ "${tagspec}" != "" ]; then
@@ -992,10 +1004,12 @@ make_change_add()
   # Parse ${value} into ${parsed} & obtain ${obj}
   if [ "${permissions}" == "" ]; then
     local parsed="$(parse_alias "${key} = ${value}")"
-    local obj="$(str_filter "$(echo "${parsed}"|gawk '{split($3, obj, "=");print obj[2]}')")"
+    local obj="$(str_filter "$(echo "${parsed}" | \
+      gawk '{split($3, obj, "=");print obj[2]}')")"
   else
     local parsed="$(parse_perms "${key} ${value}")"
-    local obj="$(str_filter "$(echo "${parsed}"|gawk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')")"
+    local obj="$(str_filter "$(echo "${parsed}" | \
+      gawk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')")"
   fi
 
   info+=("INFO: Parsed additions: '$(str_rem_filter "${parsed}")'\n")
@@ -1005,7 +1019,8 @@ make_change_add()
   info+=("INFO: Total additions #${#obj[@]} (${obj[@]})\n")
 
   # Create ${search} from ${needle} (flattens multiline results)
-  local search="$(sed -ne "/${needle}/,/[a-zA-Z0-9]$/p" ${haystack}|tr '\n' ' ')"
+  local search="$(sed -ne "/${needle}/,/[a-zA-Z0-9]$/p" ${haystack} | \
+    tr '\n' ' ')"
 
   info+=("INFO: Search results: '${search}'\n")
 
@@ -1021,14 +1036,16 @@ make_change_add()
       parsed_stanza="$(parse_perms "${key}")"
     else
       parsed_stanza="$(parse_perms "${search}")"
-      local objs="$(str_filter "$(echo "${parsed_stanza}"|gawk '{if (match($0, /cmds=(.*)$/, obj)){print obj[1]}}')")"
+      local objs="$(str_filter "$(echo "${parsed_stanza}" | \
+        gawk '{if (match($0, /cmds=(.*)$/, obj)){print obj[1]}}')")"
     fi
   else
     if [ ${add} -eq 1 ]; then
       parsed_stanza="$(parse_alias "${key}")"
     else
       parsed_stanza="$(parse_alias "${search}")"
-      local objs="$(echo "${parsed_stanza}"|gawk '{split($3, obj, "=");print obj[2]}')"
+      local objs="$(echo "${parsed_stanza}" | \
+        gawk '{split($3, obj, "=");print obj[2]}')"
     fi
   fi
 
@@ -1052,11 +1069,13 @@ make_change_add()
     local prefix="$(return_prefix "${parsed_stanza}")"
   fi
 
-  # If ${#objs[@]} greater than 0 perform intersection from ${obj[@]} & ${search} doesn't equal ${needle}
+  # If ${#objs[@]} greater than 0 perform intersection from ${obj[@]} &
+  # ${search} doesn't equal ${needle}
   if [[ "${search}" != "${needle}" ]] && [[ ${#objs[@]} -gt 0 ]]; then
 
     # Perform intersection of ${objs[@]} with ${obj[@]} (place hex value of ',')
-    local fobjs=($(comm -3 <(printf '%s\n' "${objs[@]}"|sort -u) <(printf '%s2c0a\n' "$(str_filter ${obj[@]})"|sort -u)))
+    local fobjs=($(comm -3 <(printf '%s\n' "${objs[@]}"|sort -u) \
+      <(printf '%s2c0a\n' "$(str_filter ${obj[@]})"|sort -u)))
   else
 
     # Since ${#objs[@]} was empty use ${obj[@]} as ${res}
@@ -1074,7 +1093,8 @@ make_change_add()
   local objects="${fobjs[@]}"
 
   # Set '${prefix} ${objects}' as ${replacement}
-  replacement="$(str_rem_multi_spaces "${prefix} $(str_rem_filter "${objects}")")"
+  replacement="$(str_rem_multi_spaces "${prefix} \
+    $(str_rem_filter "${objects}")")"
 
   info+=("INFO: Replacement: '${replacement}'\n")
 
@@ -1082,7 +1102,8 @@ make_change_add()
   if [ ${add} -eq 0 ]; then
 
     # Edit existing ${mode} for ${key_orig}
-    do_sed "${original}" "${haystack}" "$(str_sed_escapes "${search}")" "${replacement}"
+    do_sed "${original}" "${haystack}" \
+      "$(str_sed_escapes "${search}")" "${replacement}"
   else
 
     # Add ${mode} ${key_orig} values
@@ -1128,17 +1149,19 @@ make_change_remove()
     return 0
   fi
 
-  # Parse ${search} into chunks to create ${replacement} prefix & ${objects[@]} for comparison
+  # Parse ${search} to create ${replacement} prefix & ${objects[@]}
   if [ "${permissions}" != "" ]; then
     parsed_stanza="$(parse_perms "${search}")"
 
     # Obtain the object list from ${parsed_stanza}
-    local objects="$(str_filter "$(echo "${parsed_stanza}"|gawk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')")"
+    local objects="$(str_filter "$(echo "${parsed_stanza}" | \
+      gawk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')")"
   else
     parsed_stanza="$(parse_alias "${search}")"
 
     # Obtain the object list from ${parsed_stanza}
-    local objects="$(echo "${parsed_stanza}"|gawk '{split($3, obj, "=");print obj[2]}')"
+    local objects="$(echo "${parsed_stanza}" | \
+      gawk '{split($3, obj, "=");print obj[2]}')"
   fi
 
   # Create the replacement string prefix
@@ -1151,8 +1174,7 @@ make_change_remove()
     return 1
   fi
 
-  # Create ${objs[@]} from ${objects} while ensuring placehodlers for ',' characters exist
-  #IFS=',' read -a objs <<< "$(echo "${objects}"|sed "s|${comma}|${comma},|g")"
+  # Create ${objs[@]} from ${objects} to ensuring placehodlers for ',' character
   IFS=',' read -a objs <<< "$(str_rem_filter_spaces "${objects}")"
 
   # Clean up filtering on ${objects} for pretty printing
@@ -1163,13 +1185,14 @@ make_change_remove()
   info+=("INFO: Total existing #${#objs[@]} (${objects})\n")
 
   # if ${key} & ${value} present remove ${value} from ${key}
-  if [[ "${key}" != "" ]] && [[ ${#obj[@]} -gt 0 ]] && [[ "${key_orig}" != "${value}" ]]; then
+  if [[ "${key}" != "" ]] && [[ ${#obj[@]} -gt 0 ]] && \
+      [[ "${key_orig}" != "${value}" ]]; then
 
     info+=("INFO: Total removals #${#obj[@]} (${obj[@]})\n")
 
     # Perform intersection of ${objs[@]} from ${obj[@]}
-    #local res=($(comm -23 <(printf '%s\n' "${objs[@]}"|sort -u) <(printf '%s2c0a\n' "$(str_filter ${obj[@]})"|sort -u)))
-    local res=($(comm -23 <(printf '%s\n' "${objs[@]}"|sort -u) <(printf '%s2c0a\n' "$(str_filter ${obj[@]})"|sort -u)))
+    local res=($(comm -23 <(printf '%s\n' "${objs[@]}"|sort -u) \
+      <(printf '%s2c0a\n' "$(str_filter ${obj[@]})"|sort -u)))
 
     # Ensure ${#res[@]} -gt 0
     if [ ! ${#res[@]} -gt 0 ]; then
@@ -1188,13 +1211,15 @@ make_change_remove()
     if [ "${permissions}" == "" ]; then
       replace="$(str_rem_multi_spaces "${prefix} ${objects}")"
     else
-      replace="$(str_rem_multi_spaces "$(str_rem_filter "${replacement} ${res[@]}")")"
+      replace="$(str_rem_multi_spaces \
+        "$(str_rem_filter "${replacement} ${res[@]}")")"
     fi
 
     info+=("INFO: Replacement: '${replace}'\n")
 
     # Make the change
-    do_sed "${original}" "${haystack}" "$(str_sed_escapes "${search}")" "${replace}"
+    do_sed "${original}" "${haystack}" \
+      "$(str_sed_escapes "${search}")" "${replace}"
   fi
 }
 
@@ -1220,7 +1245,8 @@ make_change()
   fi
 
   if [ "${remove}" -eq 1 ]; then
-    make_change_remove "${tmp_file}" "${haystack}" "${needle}" "${key}" "${key_orig}" "${obj[@]}"
+    make_change_remove "${tmp_file}" "${haystack}" "${needle}" \
+      "${key}" "${key_orig}" "${obj[@]}"
   fi
 
   info+=("INFO: Saved in ${tmp_file}\n")
