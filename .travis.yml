@@ -9,4 +9,4 @@ addons:
 language: bash
 
 script:
-    - bash test/harness
+    - cd test; ./harness
