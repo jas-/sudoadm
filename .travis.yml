@@ -1,10 +1,6 @@
 os:
   - linux
-  - osx
 
-before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then curl -k http://ftp.gnu.org/gnu/bash/bash-4.2.tar.gz | zcat | tar -xf -; cd bash-4.2; ./configure --prefix=/usr/local/bin; sudo make install; sudo bash -c "echo /usr/local/bin/bash >> /private/etc/shells"; cd ~/build/jas-/sudoadm/; ls -lah; fi
-  
 addons:
   apt:
     packages:
@@ -15,4 +11,4 @@ language: bash
 sudo: required
 
 script:
-    - pwd; cd test; sudo ./harness
+    - cd test; sudo ./harness
