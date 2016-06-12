@@ -6,6 +6,7 @@ addons:
   apt:
     packages:
       - sudo
+      - bash
 
 language: bash
 sudo: required
