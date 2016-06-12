@@ -166,7 +166,7 @@ for restoration.
 
 ## contributing ##
 
-Contributions are welcome & appreciated. Refer to the [contributing document](https://github.com/jas-/node-libnmap/blob/master/CONTRIBUTING.md)
+Contributions are welcome & appreciated. Refer to the [contributing document](https://github.com/jas-/sudoadm/blob/master/CONTRIBUTING.md)
 to help facilitate pull requests.
 
 ## license ##
