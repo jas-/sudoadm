@@ -76,71 +76,93 @@ Below are some usage examples when working with the Host_Alias stanza
 ```
 
 ### Manage command aliases ###
+Below are some usage examples when working with the Cmnd_Alias stanza
 
+#### Add new Cmnd_Alias ####
 ```sh
-  - Add new command alias
-      ./sudoadm -a -C cmd_alias "/bin/ls, /sbin/lsof, /bin/top"
+./sudoadm -a -C cmd_alias "/bin/ls, /sbin/lsof, /bin/top"
+```
 
-  - Remove an existing command alias
-      ./sudoadm -r -C cmd_alias
+#### Remove an existing Cmnd_Alias ####
+```sh
+./sudoadm -r -C cmd_alias
+```
 
-  - Remove an existing command alias member
-      ./sudoadm -r -C foo "bar"
+#### Remove an existing Cmnd_Alias member ####
+```sh
+./sudoadm -r -C foo "bar"
 ```
 
 ### Manage permissions ###
+Below are some usage examples when working with the permissions
 
+#### Add new permission ####
 ```sh
-  - Add new permission
-      ./sudoadm -a -P foo "ALL=/sbin/lsof, /bin/strace"
-      ./sudoadm -a -P %foo "localhost=/sbin/lsof, /bin/strace"
+./sudoadm -a -P foo "ALL=/sbin/lsof, /bin/strace"
+./sudoadm -a -P %foo "localhost=/sbin/lsof, /bin/strace"
+```
 
-  - Remove an existing command alias
-      ./sudoadm -r -P foo
-      ./sudoadm -r -P %foo
+#### Remove an existing set of permissions ####
+```sh
+./sudoadm -r -P foo
+./sudoadm -r -P %foo
+```
 
-  - Remove an existing command alias member
-      ./sudoadm -r -P foo "/bin/lsof"
-      ./sudoadm -r -P %foo "/bin/lsof"
+#### Remove an existing permissions membership item ####
+```sh
+./sudoadm -r -P foo "/bin/lsof"
+./sudoadm -r -P %foo "/bin/lsof"
 ```
 
 ### Manage default options ###
+Below are some usage examples when working with defualts
 
+#### Add new default option ####
 ```sh
-  - Add new default option
-      ./sudoadm -a -D default_opt "!root_sudo, timestamp_timeout"
+./sudoadm -a -D default_opt "!root_sudo, timestamp_timeout"
+```
 
-  - Remove an existing default option
-      ./sudoadm -r -D default_opt
+#### Remove an existing default option ####
+```sh
+./sudoadm -r -D default_opt
+```
 
-  - Remove an existing default option member
-      ./sudoadm -r -D foo "bar"
+#### Remove an existing default option member ####
+```sh
+./sudoadm -r -D foo "bar"
 ```
 
 ### Additional options ###
+There are additional options that can assist with things such as the sudoers
+file location, performing validation of expected configurations (per stanza),
+automated restoration of last previous change, or even an interactive mode
+for restoration.
+
+#### Specify path to sudoer configuration file to add a new User_Alias & members ####
 
 ```sh
-  - Specify path to sudoer configuration file to add a new user
-    alias & members
-      ./sudoadm -f /etc/sudoers.d/foo.conf -a -A foo "bar, baz"
-
-  - Perform validation of change regarding new user alias member(s)
-      ./sudoadm -v -a -A foo "bar, baz"
-
-  - Perform automated restoration of latest saved copy of sudoers
-    configuration
-      ./sudoadm -R
-
-  - Perform interactive restoration of a prior saved copy of sudoers
-    configuration
-      ./sudoadm -R -i
-
-  - Optionally create the specified sudoer configuration file if it
-    doesn't exist
-      ./sudoadm -n -f /etc/sudoers.d/foo.conf -a -A foo "bar, baz"
-
+./sudoadm -f /etc/sudoers.d/foo.conf -a -A foo "bar, baz"
 ```
 
+#### Perform validation of change regarding new user alias member(s) ####
+```sh
+./sudoadm -v -a -A foo "bar, baz"
+```
+
+#### Perform automated restoration of latest saved copy of sudoers configuration ####
+```sh
+./sudoadm -R
+```
+
+#### Perform interactive restoration of a prior saved copy of sudoers configuration ####
+```sh
+./sudoadm -R -i
+```
+
+#### Optionally create the specified sudoer configuration file if it doesn't exist ####
+```sh
+./sudoadm -n -f /etc/sudoers.d/foo.conf -a -A foo "bar, baz"
+```
 
 ## contributing ##
 

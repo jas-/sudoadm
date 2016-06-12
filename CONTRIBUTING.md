@@ -91,7 +91,8 @@ test directory.  Look at other tests to see how they should be
 structured.
 
 ```text
-$ npm test
+$ cd test;
+$ ./harness
 ```
 
 ### Step 6: Push
