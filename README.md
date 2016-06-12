@@ -1,4 +1,4 @@
-# sudoadm [![Build Status](https://travis-ci.org/jas-/sudoadm.png?branch=master)](https://travis-ci.org/jas-/sudoadm)
+# sudoadm [![Build Status](https://travis-ci.org/jas-/sudoadm.png?branch=v0.0.17)](https://travis-ci.org/jas-/sudoadm)
 
 The missing API for automating sudoer changes
 
