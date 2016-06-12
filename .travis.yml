@@ -1,0 +1,12 @@
+os:
+  - linux
+
+addons:
+  apt:
+    packages:
+      - sudo
+
+language: bash
+
+script:
+    - bash test/harness
