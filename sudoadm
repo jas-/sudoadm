@@ -3,6 +3,9 @@
 # This missing API for sudoer
 # Facilitates automated modifications to the sudoers(.d/*) configuration(s)
 
+# License: MIT 2015-2016
+# Author: Jason Gerfen <jason.gerfen@gmail.com>
+
 ###############################################
 # Defined variables                           #
 ###############################################
