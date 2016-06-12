@@ -6,7 +6,7 @@ before_install:
 #  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
 #  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew outdated bash || brew upgrade bash; fi
 #  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew outdated sudo || brew upgrade sudo; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then curl -k http://ftp.gnu.org/gnu/bash/bash-4.2.tar.gz | zcat | tar -xf -; cd bash-4.2; ./configure --prefix=/usr/local/bin; sudo make install; sudo bash -c "echo /usr/local/bin/bash >> /private/etc/shells"; sudo chsh -s /usr/local/bin/bash; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then curl -k http://ftp.gnu.org/gnu/bash/bash-4.2.tar.gz | zcat | tar -xf -; cd bash-4.2; ./configure --prefix=/usr/local/bin; sudo make install; sudo bash -c "echo /usr/local/bin/bash >> /private/etc/shells"; fi
   
 addons:
   apt:
