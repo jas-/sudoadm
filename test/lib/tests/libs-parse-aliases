@@ -25,7 +25,8 @@ if [ ! -f "${sudoadm}" ]; then
   sudoadm=$(find / -type f -name sudoadm|sort -u|head -1)
 fi
 
-# Combine ${cmnd_aliases[@]}, ${host_aliases[@]} & ${user_aliases[@]} into ${object[@]}
+# Combine ${cmnd_aliases[@]}, ${host_aliases[@]} & 
+# ${user_aliases[@]} into ${object[@]}
 for cmnd in ${!cmnd_aliases[@]}; do
   object+=("Cmnd_Alias ${cmnd} = ${cmnd_aliases[${cmnd}]}")
 done
@@ -58,7 +59,8 @@ if [ ${#object[@]} -gt 0 ]; then
     parsed="$(${sudoadm} -t "str_rem_filter_comma \"${parsed}\"")"
     parsed="$(${sudoadm} -t "str_rem_filter_spaces \"${parsed}\"")"
 
-    # Ensure parsing succeeded (only validates those field requried for a valid stanza)
+    # Ensure parsing succeeded 
+    # (only validates those field requried for a valid stanza)
     stanza="$(echo "${parsed}"|gawk '{split($1, obj, "=");print obj[2]}')"
     account="$(echo "${parsed}"|gawk '{split($2, obj, "=");print obj[2]}')"
     objects="$(echo "${parsed}"|gawk '{split($3, obj, "=");print obj[2]}')"
@@ -73,12 +75,23 @@ if [ ${#object[@]} -gt 0 ]; then
     val_objects="$(echo "${parsed}"|sed "s|.*\(${objects}\).*|\1|g")"
 
     # Validate components 
-    if [[ "${stanza}" != "${val_stanza}" ]] || [[ "${account}" != "${val_account}" ]] || [[ "${objects}" != "${val_objects}" ]]; then
-      echo "${prog}: Could not validate parsing of '${stanza}' stanza for '${account}'"
+    if [[ "${stanza}" != "${val_stanza}" ]] || \
+        [[ "${account}" != "${val_account}" ]] || \
+        [[ "${objects}" != "${val_objects}" ]]; then
+
+      echo "${prog}: Could not validate parsing of '${stanza}' \
+        stanza for '${account}'"
+
       echo "Parsed: ${parsed}"
-      [[ "${stanza}" != "${val_stanza}" ]] && echo "Stanza didn't match (${stanza} - ${val_stanza})"
-      [[ "${account}" != "${val_account}" ]] && echo "Account didn't match (${account})"
-      [[ "${objects}" != "${val_objects}" ]] && echo "Objects didn't match (${objects})"
+
+      [[ "${stanza}" != "${val_stanza}" ]] && \
+        echo "Stanza didn't match (${stanza} - ${val_stanza})"
+
+      [[ "${account}" != "${val_account}" ]] && \
+        echo "Account didn't match (${account})"
+
+      [[ "${objects}" != "${val_objects}" ]] && \
+        echo "Objects didn't match (${objects})"
       exit 1
     fi
 

@@ -38,21 +38,35 @@ if [ ${#permissions[@]} -gt 0 ]; then
       exit 1
     fi
 
-    # Ensure parsing succeeded (only validates those field requried for a valid stanza)
-    stanza="$(echo "${parsed}"|gawk '{split($1, obj, "=");print obj[2]}')"
-    server="$(echo "${parsed}"|gawk '{split($2, obj, "=");print obj[2]}')"
-    objects="$(echo "${parsed}"|gawk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')"
+    # Ensure parsing succeeded (only validates those fields 
+    # requried for a valid stanza)
+    stanza="$(echo "${parsed}" | \
+      gawk '{split($1, obj, "=");print obj[2]}')"
+    server="$(echo "${parsed}" | \
+      gawk '{split($2, obj, "=");print obj[2]}')"
+    objects="$(echo "${parsed}" | \
+      gawk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')"
 
     # Create safe regex from ${permissions[${data}]} using str_sed_escapes()
     needle="$(${sudoadm} -t "str_sed_escapes \"${permissions[${data}]}\"")"
 
     # Validate components 
-    if [[ "${stanza}" != "${data}" ]] || [[ "$(echo "${needle}"|sed "s|.*\(${server}\).*|\1|g")" == "" ]] || [[ "$(echo "${needle}"|sed "s|.*\(${objects}\).*|\1|g")" == "" ]]; then
-      echo "${prog}: Could not validate parsing of permissions stanza for '${data}'"
+    if [[ "${stanza}" != "${data}" ]] || \
+        [[ "$(echo "${needle}"|sed "s|.*\(${server}\).*|\1|g")" == "" ]] || \
+        [[ "$(echo "${needle}"|sed "s|.*\(${objects}\).*|\1|g")" == "" ]]; then
+
+      echo "${prog}: Could not validate parsing of permissions stanza for \
+        '${data}'"
+
       echo "Parsed: ${parsed}"
+
       [[ "${stanza}" != "${data}" ]] && "Stanza didn't match (${data})"
-      [[ "$(echo "${needle}"|sed "s|.*\(${server}\).*|\1|g")" == "" ]] && echo "Server didn't match (${server})"
-      [[ "$(echo "${needle}"|sed "s|.*\(${objects}\).*|\1|g")" == "" ]] && echo "Commands didn't match (${objects})"
+
+      [[ "$(echo "${needle}"|sed "s|.*\(${server}\).*|\1|g")" == "" ]] && \
+        echo "Server didn't match (${server})"
+
+      [[ "$(echo "${needle}"|sed "s|.*\(${objects}\).*|\1|g")" == "" ]] && \
+        echo "Commands didn't match (${objects})"
       exit 1
     fi
 

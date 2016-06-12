@@ -93,7 +93,8 @@ if [ ${#user_aliases[@]} -gt 0 ]; then
     # Use ${item} to create ${haystack} from ${name}
     haystack=$(grep "${item}" ${name})
     if [ "${haystack}" != "" ]; then
-      echo "Failed validation for remvoval of '${item}' from the '${data}' User_Alias"
+      echo "Failed validation for remvoval of '${item}' from the \
+        '${data}' User_Alias"
       echo "${bogus}" && exit 1
     fi
 

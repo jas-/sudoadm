@@ -43,7 +43,8 @@ parse_perms() {
     stanza="perm=" $1;
 
     # Initial match
-    match($2, /^(\w+)=(\(.*\))?(N?O?PASSWD|N?O?EXEC|N?O?SETENV|N?O?LOG_INPUT|N?O?LOG_OUTPUT)?:?(.*)$/, obj);
+    match($2, /^(\w+)=(\(.*\))?(N?O?PASSWD|N?O?EXEC|N?O?SETENV| \
+      N?O?LOG_INPUT|N?O?LOG_OUTPUT)?:?(.*)$/, obj);
 
     # If server is missing try again
     if (!obj[1]) {
@@ -62,7 +63,8 @@ parse_perms() {
 
     # If tag is missing try again
     if (!obj[3]) {
-      match($0, /^.*(N?O?PASSWD|N?O?EXEC|N?O?SETENV|N?O?LOG_INPUT|N?O?LOG_OUTPUT).*$/, tmp);
+      match($0, /^.*(N?O?PASSWD|N?O?EXEC|N?O?SETENV|N?O?LOG_INPUT| \
+        N?O?LOG_OUTPUT).*$/, tmp);
       if (tmp[1]) {
         obj[3]=tmp[1];
       }
@@ -148,7 +150,8 @@ if [ ${#permissions[@]} -gt 0 ]; then
     tmp="$(parse_perms "${data} ${permissions[${data}]}")"
 
     # Split ${tmp} apart to get objects (commands component)
-    obj="$(echo "${tmp}"|gawk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')"
+    obj="$(echo "${tmp}" | \
+      gawk '{if (match($0, /cmds=(.*)/, obj)){print obj[1]}}')"
 
     # Generate an array from ${obj}
     IFS=',' read -a items <<< "$(echo "${obj}")"
@@ -176,7 +179,8 @@ if [ ${#permissions[@]} -gt 0 ]; then
     # Use ${item} to create ${haystack} from ${name}
     haystack=$(grep "${needle}" ${name}|grep "${item}")
     if [ "${haystack}" != "" ]; then
-      echo "Failed validation for remvoval of '${item}' from the '${data}' Permissions"
+      echo "Failed validation for remvoval of '${item}' from the \
+        '${data}' Permissions"
       echo "${bogus}" && exit 1
     fi
 

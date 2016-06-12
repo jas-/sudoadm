@@ -48,7 +48,8 @@ if [ ${#user_aliases[@]} -gt 0 ]; then
     fi
 
     # Create a needle to search for
-    needle="^User_Alias.*${data}.*$(echo "${user_aliases[${data}]}"|sed -e 's|, |.*|g')"
+    needle="^User_Alias.*${data}.*$(echo "${user_aliases[${data}]}" | \
+      sed -e 's|, |.*|g')"
 
     # Use ${needle} to create ${haystack} from ${name}
     haystack=$(grep "${needle}" ${name})
