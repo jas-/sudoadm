@@ -12,4 +12,4 @@ language: bash
 sudo: required
 
 script:
-    - cd test; ./harness
+    - cd test; sudo ./harness
