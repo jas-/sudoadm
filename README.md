@@ -45,6 +45,7 @@ Below are some usage examples when working with the User_Alias stanza
 #### Add/Edit User_Alias ####
 ```sh
 ./sudoadm -a -A foo "bar, baz, ping, pong"
+// User_Alias foo=bar, baz, ping, pong
 ```
 
 #### Remove an existing User_Alias ####
@@ -55,6 +56,7 @@ Below are some usage examples when working with the User_Alias stanza
 #### Remove an existing User_Alias member ####
 ```sh
 ./sudoadm -r -A foo "bar"
+// User_Alias foo=baz, ping, pong
 ```
 
 ### Manage host aliases ###
@@ -62,7 +64,8 @@ Below are some usage examples when working with the Host_Alias stanza
 
 #### Add/Edit Host_Alias ####
 ```sh
-./sudoadm -a -H command "server01, server02, server03"
+./sudoadm -a -H hosts "server01, server02, server03"
+// Host_Alias hosts=server01, server02, server03
 ```
 
 #### Remove an existing Host_Alias ####
