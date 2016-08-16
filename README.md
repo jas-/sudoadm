@@ -64,8 +64,8 @@ Below are some usage examples when working with the Host_Alias stanza
 
 #### Add/Edit Host_Alias ####
 ```sh
-./sudoadm -a -H hosts "server01, server02, server03"
-// Host_Alias hosts=server01, server02, server03
+./sudoadm -a -H foo "server01, server02, server03"
+// Host_Alias foo=server01, server02, server03
 ```
 
 #### Remove an existing Host_Alias ####
@@ -75,7 +75,8 @@ Below are some usage examples when working with the Host_Alias stanza
 
 #### Remove an existing Host_Alias member ####
 ```sh
-./sudoadm -r -H foo "bar"
+./sudoadm -r -H foo "server03"
+// Host_Alias foo=server01, server02
 ```
 
 ### Manage command aliases ###
@@ -83,7 +84,8 @@ Below are some usage examples when working with the Cmnd_Alias stanza
 
 #### Add new Cmnd_Alias ####
 ```sh
-./sudoadm -a -C cmd_alias "/bin/ls, /sbin/lsof, /bin/top"
+./sudoadm -a -C foo "/bin/ls, /sbin/lsof, /bin/top"
+// Cmnd_Alias cmd_alias=/bin/ls, /sbin/lsof, /bin/top
 ```
 
 #### Remove an existing Cmnd_Alias ####
@@ -93,7 +95,8 @@ Below are some usage examples when working with the Cmnd_Alias stanza
 
 #### Remove an existing Cmnd_Alias member ####
 ```sh
-./sudoadm -r -C foo "bar"
+./sudoadm -r -C foo "/bin/top"
+// Cmnd_Alias cmd_alias=/bin/ls, /sbin/lsof
 ```
 
 ### Manage permissions ###
@@ -102,7 +105,10 @@ Below are some usage examples when working with the permissions
 #### Add new permission ####
 ```sh
 ./sudoadm -a -P foo "ALL=/sbin/lsof, /bin/strace"
+// foo ALL=/bin/ls, /sbin/lsof, /bin/strace
+
 ./sudoadm -a -P %foo "localhost=/sbin/lsof, /bin/strace"
+// %foo localhost=/bin/ls, /sbin/lsof, /bin/strace
 ```
 
 #### Remove an existing set of permissions ####
@@ -114,7 +120,10 @@ Below are some usage examples when working with the permissions
 #### Remove an existing permissions membership item ####
 ```sh
 ./sudoadm -r -P foo "/bin/lsof"
+// foo localhost=/bin/ls, /bin/strace
+
 ./sudoadm -r -P %foo "/bin/lsof"
+// %foo localhost=/bin/ls, /bin/strace
 ```
 
 ### Manage default options ###
